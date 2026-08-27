@@ -1,7 +1,13 @@
-# Dog Breed Selector - Dependencias
+# Dog Breed Selector - Dependencias de desarrollo
 # Python 3.9+
 #
-# El motor (src/) solo usa la librería estándar. Lo de abajo es
-# exclusivamente para desarrollo y tests.
+# El motor (src/) solo usa la librería estándar; esto es para tests y para
+# correr la API en local. El despliegue de la API en Vercel usa
+# api/requirements.txt (Vercel instala el requirements.txt más cercano a
+# la función, no este).
 
 pytest==7.4.3
+fastapi==0.104.1
+pydantic==2.5.0
+uvicorn==0.24.0
+httpx==0.25.2

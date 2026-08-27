@@ -18,10 +18,14 @@ questionnaire/questions.json  Cuestionario: categorías, pesos, preguntas
 src/breeds.py               Carga y valida el CSV y el cuestionario
 src/calculator.py           Motor de scoring (puro, sin I/O)
 src/recommender.py          API de alto nivel + CLI
+api/main.py                 API HTTP (FastAPI) sobre el mismo motor
 tests/                      pytest sobre datos y motor
-web/index.html + engine.js  Front estático (sin backend); usa un espejo
-                             en JS del motor de Python
+web/index.html + engine.js  Front estático; puntúa en el navegador con un
+                             espejo en JS del motor de Python (no llama a
+                             la API)
 docs/methodology.md         Metodología de scoring
+vercel.json                 Despliega api/ como función serverless y
+                             web/ como sitio estático en la raíz
 ```
 
 ## Uso
@@ -53,7 +57,22 @@ for rec in recommender.recommend({"preferred_size": "small", "desired_energy": "
 (regenerables con `python3 -c "from breeds import *; ..."`, ver
 `src/breeds.py:breeds_to_json`) y puntúa en el navegador con `engine.js`,
 un espejo simplificado de `src/calculator.py`. Si cambias una fórmula de
-scoring, cámbiala en los dos sitios.
+scoring, cámbiala en los dos sitios. Es intencionalmente independiente de
+la API: funciona sin backend.
+
+### API
+
+```bash
+pip install -r requirements.txt
+PYTHONPATH=src uvicorn api.main:app --reload --port 8000
+# http://localhost:8000/docs
+```
+
+Endpoints: `GET /api/questions`, `POST /api/recommendations`,
+`GET /api/breeds` (con filtros `size`, `hypoallergenic`,
+`apartment_friendly_min`), `GET /api/breeds/{id}`, `GET /api/search?q=...`.
+En Vercel, `vercel.json` la despliega como función serverless bajo `/api/*`
+mientras sirve `web/` como sitio estático en la raíz.
 
 ## Metodología
 
@@ -71,9 +90,14 @@ cumplir siempre el CSV. Las reglas de mayor impacto ya están cubiertas por
 (falta el grupo Terrier entero, ver §3 del informe) y terminar de normalizar
 `origin_country` (V-19, mezcla países y regiones).
 
+## Otros documentos
+
+[`CONTRIBUTING.md`](./CONTRIBUTING.md), [`QUICKSTART.md`](./QUICKSTART.md),
+[`docs/api_documentation.md`](./docs/api_documentation.md) y
+[`docs/faq.md`](./docs/faq.md).
+
 ## Pendiente / roadmap
 
-- API HTTP (el `requirements.txt` original prometía FastAPI sin código;
-  se ha retirado hasta que exista)
-- Ampliar el catálogo de razas más allá de las 29 actuales
+- Ampliar el catálogo de razas más allá de las 29 actuales (falta el grupo
+  Terrier entero, ver `docs/auditoria-datos.md` §3)
 - CI (lint + pytest) en GitHub Actions
