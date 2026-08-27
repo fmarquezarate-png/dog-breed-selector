@@ -1,17 +1,18 @@
 """
 Ejemplo de uso del Dog Breed Selector
 
-Este script demuestra cómo usar el sistema de recomendaciò´´´n
+Este script demuestra cómo usar el sistema de recomendación
 para obtener razas de perro ideales basadas en preferencias personales.
 """
 
 import sys
 import os
 
-# A˜nadir src al path
+# Añadir src al path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from calculator import CompatibilityCalculator, load_data
+from breeds import load_breeds, load_questions
+from calculator import CompatibilityCalculator
 
 
 def main():
@@ -21,7 +22,8 @@ def main():
     
     # Cargar datos
     print("\n📂 Cargando datos...")
-    breeds_data, questions_data = load_data()
+    breeds_data = load_breeds()
+    questions_data = load_questions()
     print(f"   ✓ {len(breeds_data)} razas cargadas")
     print(f"   ✓ {len(questions_data.get('categories', {}))} categorías de preguntas")
     
@@ -60,7 +62,7 @@ def main():
     print("   • Apartamento mediano (75m2) con terraza")
     print("   • Pareja joven sin niños")
     print("   • Trabajo oficina 8h")
-    print("   • Actividad moderada (45 min ejercicio/dí´´a)")
+    print("   • Actividad moderada (45 min ejercicio/día)")
     print("   • Primerizo, tolerancia baja a pelo/ladridos")
     
     scores_1 = calculator.score_all_breeds(user_1)
@@ -68,7 +70,7 @@ def main():
     print("\n🏆 Top 5 Razas Recomendadas:")
     for i, score in enumerate(scores_1[:5], 1):
         print(f"\n   {i}. {score.breed_name_es} - {score.match_percentage}% compatible")
-        print(f"      Caracterí´´sticas: {', '.join(score.key_traits)}")
+        print(f"      Características: {', '.join(score.key_traits)}")
         if score.dealbreakers:
             print(f"      ⚠️  Consideraciones: {', '.join(score.dealbreakers)}")
     
@@ -103,8 +105,8 @@ def main():
     print("\nPerfil:")
     print("   • Casa mediana (150m2) con jardín")
     print("   • Familia con 2 niños (4-8 años)")
-    print("   • Trabajo hí ´brido")
-    print("   • Muy activos (90 min ejercicio/dí´´a)")
+    print("   • Trabajo híbrido")
+    print("   • Muy activos (90 min ejercicio/día)")
     print("   • Experiencia intermedia, niños prioritarios")
     
     scores_2 = calculator.score_all_breeds(user_2)
@@ -112,13 +114,13 @@ def main():
     print("\n🏆 Top 5 Razas Recomendadas:")
     for i, score in enumerate(scores_2[:5], 1):
         print(f"\n   {i}. {score.breed_name_es} - {score.match_percentage}% compatible")
-        print(f"      Caracterí´´sticas: {', '.join(score.key_traits)}")
+        print(f"      Características: {', '.join(score.key_traits)}")
         if score.dealbreakers:
             print(f"      ⚠️  Consideraciones: {', '.join(score.dealbreakers)}")
     
-    # Ejemplo 3: Persona mayor buscando compa˜nero tranquilo
+    # Ejemplo 3: Persona mayor buscando compañero tranquilo
     print("\n" + "="*60)
-    print("📝 EJEMPLO 3: Persona mayor buscando compa˜nero tranquilo")
+    print("📝 EJEMPLO 3: Persona mayor buscando compañero tranquilo")
     print("="*60)
     
     user_3 = {
@@ -148,7 +150,7 @@ def main():
     print("   • Apartamento grande (100m2) sin jardín")
     print("   • Persona mayor viviendo sola")
     print("   • Trabaja desde casa")
-    print("   • Actividad ligera (30 min paseo/dí´´a)")
+    print("   • Actividad ligera (30 min paseo/día)")
     print("   • Experiencia avanzada, alergias leves")
     
     scores_3 = calculator.score_all_breeds(user_3)
@@ -156,7 +158,7 @@ def main():
     print("\n🏆 Top 5 Razas Recomendadas:")
     for i, score in enumerate(scores_3[:5], 1):
         print(f"\n   {i}. {score.breed_name_es} - {score.match_percentage}% compatible")
-        print(f"      Caracterí´´sticas: {', '.join(score.key_traits)}")
+        print(f"      Características: {', '.join(score.key_traits)}")
         if score.dealbreakers:
             print(f"      ⚠️  Consideraciones: {', '.join(score.dealbreakers)}")
     

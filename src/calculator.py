@@ -1,287 +1,599 @@
-"""Dog Breed Selector - Calculator Module"""
+"""Motor de compatibilidad usuario-raza.
 
-import json
-from typing import Dict, List, Any, Tuple
+Cada `match_*` devuelve un score 0-100 para una dimensión concreta. Las
+dimensiones se agrupan en las categorías del cuestionario, y las categorías
+se combinan con los pesos definidos en `questionnaire/questions.json`.
+
+Invariantes que el motor garantiza (y que los tests comprueban):
+
+* Toda función `match_*` devuelve un valor en [0, 100].
+* `total_score` está en [0, 100] sea cual sea el peso de las categorías:
+  los pesos se re-normalizan por su suma, así que editarlos en el JSON no
+  puede sacar el score de escala.
+* `match_percentage` = `total_score` menos las penalizaciones, acotado a
+  [0, 100].
+* El scoring es puro: mismas entradas, mismo resultado. No lee ficheros ni
+  muta sus argumentos.
+"""
+
+from __future__ import annotations
+
 from dataclasses import dataclass
+from typing import Any, Callable, Dict, List, Mapping, Sequence, Tuple
+
+from breeds import SIZE_ORDER, Breed, default_answers
+
+#: Puntos que resta cada incompatibilidad crítica.
+DEALBREAKER_PENALTY = 15.0
+
+#: Score neutro cuando el usuario no expresa preferencia sobre una dimensión.
+#: No es 100 (no premiamos la indiferencia) ni 50 (no la penalizamos).
+NEUTRAL = 70.0
+
+
+def clamp(value: float, low: float = 0.0, high: float = 100.0) -> float:
+    return max(low, min(high, value))
 
 
 @dataclass
 class BreedScore:
-    """Puntuaciò´´´n de una raza para un usuario especí´´fico"""
+    """Resultado del scoring de una raza para un perfil de usuario."""
+
     breed_id: str
     breed_name: str
     breed_name_es: str
     total_score: float
     category_scores: Dict[str, float]
+    dimension_scores: Dict[str, float]
     match_percentage: float
     key_traits: List[str]
     considerations: List[str]
     dealbreakers: List[str]
+    rating: str = ""
+
+    def to_dict(self) -> Dict[str, Any]:
+        return dict(self.__dict__)
+
+
+#: Escala de interpretación documentada en docs/methodology.md.
+RATINGS: Sequence[Tuple[float, str]] = (
+    (90, "Excelente match"),
+    (80, "Muy buen match"),
+    (70, "Buen match"),
+    (60, "Match moderado"),
+    (0, "Match bajo"),
+)
+
+
+def rating_for(score: float) -> str:
+    for threshold, label in RATINGS:
+        if score >= threshold:
+            return label
+    return RATINGS[-1][1]
+
+
+# --------------------------------------------------------------------------
+# Mapas de respuesta -> valor numérico en escala 1-5
+# --------------------------------------------------------------------------
+
+ENERGY_LEVELS = {"low": 1, "medium": 3, "high": 4, "very_high": 5}
+ACTIVITY_LEVELS = {
+    "sedentary": 1,
+    "light": 2,
+    "moderate": 3,
+    "active": 4,
+    "very_active": 5,
+}
+TOLERANCE_LEVELS = {"none": 1, "low": 2, "medium": 3, "high": 5}
+GROOMING_LEVELS = {"minimal": 1, "moderate": 3, "high": 4, "professional": 5}
+BUDGET_LEVELS = {"low": 1, "medium": 3, "high": 4, "unlimited": 5}
+EXPERIENCE_LEVELS = {
+    "none": 1,
+    "basic": 2,
+    "intermediate": 3,
+    "advanced": 4,
+    "expert": 5,
+}
+OBEDIENCE_LEVELS = {"basic": 2, "good": 3, "excellent": 4, "competition": 5}
+KIDS_IMPORTANCE = {
+    "essential": 1.0,
+    "important": 0.8,
+    "nice_to_have": 0.5,
+    "not_important": 0.2,
+}
+GARDEN_BONUS = {
+    "yes_large": 20,
+    "yes_medium": 15,
+    "yes_small": 10,
+    "terrace": 5,
+    "no": 0,
+}
+#: m² de referencia que pide cada tamaño para vivir cómodo.
+SPACE_REQUIREMENTS = {"mini": 30, "small": 50, "medium": 80, "large": 120, "giant": 150}
+APARTMENT_TYPES = {
+    "apartamento_pequeno",
+    "apartamento_mediano",
+    "apartamento_grande",
+}
+#: Horas al día que el perro pasaría solo, por horario laboral.
+HOURS_ALONE = {
+    "home_full": 1,
+    "home_partial": 4,
+    "office_8h": 9,
+    "office_10h_plus": 11,
+    "frequent_travel": 12,
+}
+#: Tolerancia (al frío, al calor) que exige cada clima, en escala 1-5.
+#: Calibrado contra el rango real del CSV: `heat_tolerance` no pasa de 4, así
+#: que exigir 5 marcaría a casi todas las razas y el aviso perdería valor.
+CLIMATE_DEMANDS = {
+    "frio": (5, 1),
+    "continental": (4, 2),
+    "atlantico": (3, 2),
+    "mediterraneo": (2, 3),
+    "calido": (1, 4),
+}
+#: Rasgos de la raza que más importan según el propósito declarado.
+PURPOSE_TRAITS = {
+    "companion": {"good_with_children": 0.3, "trainability": 0.3, "energy_level": 0.4},
+    "family": {"good_with_children": 0.6, "trainability": 0.4},
+    "sport": {"energy_level": 0.5, "trainability": 0.5},
+    "guard": {"protectiveness": 0.6, "trainability": 0.4},
+    "therapy": {"good_with_children": 0.4, "trainability": 0.6},
+}
+#: Para "companion", un perro menos enérgico puntúa mejor.
+PURPOSE_INVERTED = {("companion", "energy_level")}
+
+
+def _level(mapping: Mapping[str, int], value: Any, fallback: int) -> int:
+    """Traduce una respuesta a escala 1-5, tolerando valores desconocidos."""
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return int(clamp(float(value), 1, 5))
+    return mapping.get(str(value), fallback)
+
+
+def _as_bool(value: Any, fallback: bool = False) -> bool:
+    """Los formularios HTML mandan `"true"`/`"false"` como texto."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        if value.lower() in {"true", "1", "yes", "si", "sí"}:
+            return True
+        if value.lower() in {"false", "0", "no", ""}:
+            return False
+    return fallback
+
+
+def _as_number(value: Any, fallback: float) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return fallback
+
+
+def _tolerance_match(user_level: int, breed_level: int, step: float) -> float:
+    """Patrón común: si el usuario tolera tanto o más de lo que la raza
+    exige, 100; si no, baja `step` puntos por cada punto de exceso."""
+    if user_level >= breed_level:
+        return 100.0
+    return clamp(100 - (breed_level - user_level) * step)
+
+
+def _capacity_match(user_level: int, breed_level: int) -> float:
+    """Patrón común para 'capacidad del usuario vs exigencia de la raza'."""
+    if user_level >= breed_level:
+        return 100.0
+    return clamp((user_level / breed_level) * 100)
+
+
+# --------------------------------------------------------------------------
+# Dimensiones
+# --------------------------------------------------------------------------
+
+
+def match_size(prefs: Mapping[str, Any], breed: Breed) -> float:
+    preferred = prefs.get("preferred_size", "no_preference")
+    if preferred == "no_preference":
+        return NEUTRAL
+    if preferred == breed.size_category:
+        return 100.0
+    try:
+        distance = abs(
+            SIZE_ORDER.index(preferred) - SIZE_ORDER.index(breed.size_category)
+        )
+    except ValueError:
+        return 50.0
+    return clamp(100 - distance * 30, low=10)
+
+
+def match_energy(prefs: Mapping[str, Any], breed: Breed) -> float:
+    """Compara la energía deseada con la de la raza.
+
+    Asimétrico a propósito: una raza *más* enérgica de lo que el usuario
+    quiere es un problema mayor (destructividad, ansiedad) que una más
+    tranquila, que como mucho decepciona.
+    """
+    desired = _level(ENERGY_LEVELS, prefs.get("desired_energy"), 3)
+    activity = _level(ACTIVITY_LEVELS, prefs.get("activity_level"), 3)
+    # El nivel de actividad real matiza lo que el usuario dice desear.
+    target = (desired * 2 + activity) / 3
+    diff = breed["energy_level"] - target
+    penalty = diff * 22 if diff > 0 else abs(diff) * 14
+    return clamp(100 - penalty)
+
+
+def match_exercise(prefs: Mapping[str, Any], breed: Breed) -> float:
+    available = _as_number(prefs.get("daily_exercise_time_minutes"), 60)
+    needed_min = max(1.0, float(breed.exercise_needs_daily_min))
+    needed_max = max(needed_min, float(breed.exercise_needs_daily_max))
+    if available >= needed_max:
+        return 100.0
+    if available >= needed_min:
+        return 90.0
+    return clamp((available / needed_min) * 100)
+
+
+def match_alone_time(prefs: Mapping[str, Any], breed: Breed) -> float:
+    """Cuánto aguanta la raza el tiempo que el usuario pasa fuera.
+
+    El CSV no tiene una columna "tolerancia a la soledad", así que se
+    estima con los dos rasgos que mejor la predicen: una raza muy enérgica
+    y muy ladradora sola muchas horas acaba en ansiedad por separación y en
+    quejas de los vecinos.
+    """
+    hours = HOURS_ALONE.get(str(prefs.get("work_schedule")), 9)
+    strain = (breed["energy_level"] + breed["barking_level"]) / 2
+    if hours <= 4:
+        return 100.0
+    # De 4 h en adelante, cada hora extra pesa según lo exigente que sea la raza.
+    return clamp(100 - (hours - 4) * (strain * 2.2))
+
+
+def match_apartment(prefs: Mapping[str, Any], breed: Breed) -> float:
+    housing = str(prefs.get("housing_type", "casa_mediana"))
+    if housing in APARTMENT_TYPES:
+        return clamp((breed["apartment_friendly"] / 5) * 100)
+    # En una casa, que la raza sea poco apta para piso deja de ser relevante.
+    return 100.0
+
+
+def match_space(prefs: Mapping[str, Any], breed: Breed) -> float:
+    size_sqm = _as_number(prefs.get("housing_size_sqm"), 100)
+    garden = str(prefs.get("has_garden", "no"))
+    required = SPACE_REQUIREMENTS.get(breed.size_category, 80)
+    bonus = GARDEN_BONUS.get(garden, 0)
+    base = 80.0 if size_sqm >= required else (size_sqm / required) * 80
+    return clamp(base + bonus)
+
+
+def match_climate(prefs: Mapping[str, Any], breed: Breed) -> float:
+    """Un Husky en Sevilla y un galgo pelón en Burgos son errores caros."""
+    cold_needed, heat_needed = CLIMATE_DEMANDS.get(
+        str(prefs.get("geographic_location")), (3, 3)
+    )
+    cold_gap = max(0, cold_needed - breed["cold_tolerance"])
+    heat_gap = max(0, heat_needed - breed["heat_tolerance"])
+    return clamp(100 - (cold_gap + heat_gap) * 15)
+
+
+def match_children(prefs: Mapping[str, Any], breed: Breed) -> float:
+    has_children = str(prefs.get("has_children", "no"))
+    importance_key = str(prefs.get("kids_compatibility", "not_important"))
+    importance = KIDS_IMPORTANCE.get(importance_key, 0.5)
+    # Convivir con niños sube el listón aunque el usuario no lo marque.
+    if has_children != "no":
+        importance = max(importance, 0.9 if has_children == "yes_0_3" else 0.7)
+    if has_children == "no" and importance_key == "not_important":
+        return NEUTRAL
+    base = (breed["good_with_children"] / 5) * 100
+    return clamp(base * importance + NEUTRAL * (1 - importance))
+
+
+def match_other_pets(prefs: Mapping[str, Any], breed: Breed) -> float:
+    pets = str(prefs.get("other_pets", "none"))
+    if pets == "none":
+        return NEUTRAL
+    scores = []
+    if pets in {"dogs", "both"}:
+        scores.append((breed["good_with_dogs"] / 5) * 100)
+    if pets in {"cats", "both"}:
+        # Un instinto de presa alto pesa tanto como la sociabilidad felina.
+        cats = (breed["good_with_cats"] / 5) * 100
+        scores.append(clamp(cats - (breed["prey_drive"] - 3) * 10))
+    return clamp(sum(scores) / len(scores)) if scores else NEUTRAL
+
+
+def match_grooming(prefs: Mapping[str, Any], breed: Breed) -> float:
+    user = _level(GROOMING_LEVELS, prefs.get("grooming_willingness"), 3)
+    return _capacity_match(user, breed["grooming_needs"])
+
+
+def match_shedding(prefs: Mapping[str, Any], breed: Breed) -> float:
+    user = _level(TOLERANCE_LEVELS, prefs.get("shedding_tolerance"), 3)
+    return _tolerance_match(user, breed["shedding"], step=25)
+
+
+def match_drooling(prefs: Mapping[str, Any], breed: Breed) -> float:
+    user = _level(TOLERANCE_LEVELS, prefs.get("drooling_tolerance"), 3)
+    return _tolerance_match(user, breed["drooling"], step=25)
+
+
+def match_barking(prefs: Mapping[str, Any], breed: Breed) -> float:
+    user = _level(TOLERANCE_LEVELS, prefs.get("barking_tolerance"), 3)
+    return _tolerance_match(user, breed["barking_level"], step=30)
+
+
+def match_hypoallergenic(prefs: Mapping[str, Any], breed: Breed) -> float:
+    allergies = str(prefs.get("household_allergies", "none"))
+    if allergies == "none":
+        return NEUTRAL
+    if allergies == "mild":
+        return 90.0 if breed.hypoallergenic else 50.0
+    if allergies in {"moderate", "severe"}:
+        return 100.0 if breed.hypoallergenic else 20.0
+    return NEUTRAL
+
+
+def match_health_budget(prefs: Mapping[str, Any], breed: Breed) -> float:
+    user = _level(BUDGET_LEVELS, prefs.get("vet_budget_monthly"), 3)
+    return _capacity_match(user, breed["health_issues"])
+
+
+def match_first_time(prefs: Mapping[str, Any], breed: Breed) -> float:
+    experience = _level(EXPERIENCE_LEVELS, prefs.get("dog_experience"), 2)
+    if _as_bool(prefs.get("first_time_owner"), fallback=experience <= 1):
+        experience = min(experience, 2)
+    if experience >= 4:
+        # Con experiencia avanzada, ninguna raza queda descartada por difícil.
+        return 100.0
+    demand = 6 - breed["good_for_first_time"]  # 1 = fácil, 5 = exigente
+    return _capacity_match(experience, demand)
+
+
+def match_trainability(prefs: Mapping[str, Any], breed: Breed) -> float:
+    expected = _level(OBEDIENCE_LEVELS, prefs.get("obedience_expectations"), 3)
+    return _capacity_match(breed["trainability"], expected)
+
+
+def match_purpose(prefs: Mapping[str, Any], breed: Breed) -> float:
+    purpose = str(prefs.get("main_purpose", "companion"))
+    traits = PURPOSE_TRAITS.get(purpose)
+    if not traits:
+        return NEUTRAL
+    total = 0.0
+    for trait, weight in traits.items():
+        value = breed[trait]
+        if (purpose, trait) in PURPOSE_INVERTED:
+            value = 6 - value
+        total += (value / 5) * 100 * weight
+    return clamp(total / sum(traits.values()))
+
+
+DimensionFn = Callable[[Mapping[str, Any], Breed], float]
+
+#: Qué dimensiones componen cada categoría del cuestionario.
+#: Cada dimensión pesa lo mismo dentro de su categoría.
+CATEGORY_DIMENSIONS: Dict[str, Dict[str, DimensionFn]] = {
+    "hogar": {
+        "space": match_space,
+        "apartment": match_apartment,
+        "climate": match_climate,
+    },
+    "estilo_vida": {
+        "energy": match_energy,
+        "exercise": match_exercise,
+        "alone_time": match_alone_time,
+    },
+    "experiencia": {
+        "first_time": match_first_time,
+        "trainability": match_trainability,
+    },
+    "preferencias_fisicas": {
+        "size": match_size,
+        "shedding": match_shedding,
+    },
+    "salud": {
+        "hypoallergenic": match_hypoallergenic,
+        "health_budget": match_health_budget,
+    },
+    "personalidad": {
+        "children": match_children,
+        "barking": match_barking,
+        "other_pets": match_other_pets,
+    },
+    "cuidados": {
+        "grooming": match_grooming,
+        "drooling": match_drooling,
+    },
+    "objetivos": {
+        "obedience": match_trainability,
+        "purpose": match_purpose,
+    },
+}
 
 
 class CompatibilityCalculator:
-    """Calcula la compatibilidad entre usuario y razas de perros"""
-    
-    def __init__(self, breeds_data: List[Dict], questions_data: Dict):
-        self.breeds = breeds_data
-        self.questions = questions_data
-        self.category_weights = {
-            cat_id: cat_data.get("weight", 0.125)
-            for cat_id, cat_data in questions_data["categories"].items()
+    """Calcula la compatibilidad entre un perfil de usuario y cada raza."""
+
+    def __init__(self, breeds: Sequence[Breed], questions: Mapping[str, Any]):
+        self.breeds = list(breeds)
+        self.questions = questions
+        raw_weights = {
+            cat_id: float(cat.get("weight", 0))
+            for cat_id, cat in questions["categories"].items()
+            if cat_id in CATEGORY_DIMENSIONS
         }
-    
-    def calculate_size_match(self, user_prefs: Dict, breed: Dict) -> float:
-        """Calcula compatibilidad de tamaño"""
-        preferred_size = user_prefs.get("preferred_size", "no_preference")
-        if preferred_size == "no_preference":
-            return 70
-        
-        breed_size = breed.get("size_category", "")
-        if preferred_size == breed_size:
-            return 100
-        
-        size_order = ["mini", "small", "medium", "large", "giant"]
-        try:
-            pref_idx = size_order.index(preferred_size)
-            breed_idx = size_order.index(breed_size)
-            diff = abs(pref_idx - breed_idx)
-            return max(10, 100 - (diff * 30))
-        except ValueError:
-            return 50
-    
-    def calculate_energy_match(self, user_prefs: Dict, breed: Dict) -> float:
-        """Calcula compatibilidad de nivel de energí´´a"""
-        user_energy = user_prefs.get("desired_energy", "medium")
-        breed_energy = breed.get("energy_level", 3)
-        
-        energy_mapping = {"low": 1, "medium": 3, "high": 4, "very_high": 5}
-        user_energy_val = energy_mapping.get(user_energy, 3)
-        
-        diff = abs(user_energy_val - breed_energy)
-        return max(20, 100 - (diff * 20))
-    
-    def calculate_exercise_match(self, user_prefs: Dict, breed: Dict) -> float:
-        """Calcula compatibilidad de necesidades de ejercicio"""
-        user_exercise = user_prefs.get("daily_exercise_time_minutes", 60)
-        breed_exercise_min = breed.get("exercise_needs_daily_min", 60)
-        breed_exercise_max = breed.get("exercise_needs_daily_max", 90)
-        
-        if user_exercise >= breed_exercise_max:
-            return 100
-        if user_exercise >= breed_exercise_min:
-            return 90
-        return max(0, (user_exercise / breed_exercise_min) * 100)
-    
-    def calculate_apartment_match(self, user_prefs: Dict, breed: Dict) -> float:
-        """Calcula compatibilidad para vivir en apartamento"""
-        housing_type = user_prefs.get("housing_type", "casa_mediana")
-        apartment_friendly = breed.get("apartment_friendly", 3)
-        
-        apartment_types = ["apartamento_pequeno", "apartamento_mediano", "apartamento_grande"]
-        if housing_type in apartment_types:
-            return (apartment_friendly / 5) * 100
-        return 70 + (apartment_friendly * 6)
-    
-    def calculate_children_match(self, user_prefs: Dict, breed: Dict) -> float:
-        """Calcula compatibilidad con niños"""
-        has_children = user_prefs.get("has_children", "no")
-        kids_importance = user_prefs.get("kids_compatibility", "not_important")
-        good_with_children = breed.get("good_with_children", 3)
-        
-        if has_children == "no" and kids_importance == "not_important":
-            return 70
-        
-        importance_mapping = {"essential": 1.0, "important": 0.8, "nice_to_have": 0.5, "not_important": 0.2}
-        importance = importance_mapping.get(kids_importance, 0.5)
-        base_score = (good_with_children / 5) * 100
-        
-        return base_score * importance + 30 * (1 - importance)
-    
-    def calculate_grooming_match(self, user_prefs: Dict, breed: Dict) -> float:
-        """Calcula compatibilidad de grooming"""
-        user_grooming = user_prefs.get("grooming_willingness", "moderate")
-        breed_grooming = breed.get("grooming_needs", 3)
-        
-        grooming_mapping = {"minimal": 1, "moderate": 3, "high": 4, "professional": 5}
-        user_grooming_val = grooming_mapping.get(user_grooming, 3)
-        
-        if user_grooming_val >= breed_grooming:
-            return 100
-        return max(0, (user_grooming_val / breed_grooming) * 100)
-    
-    def calculate_shedding_match(self, user_prefs: Dict, breed: Dict) -> float:
-        """Calcula compatibilidad de tolerancia a muda"""
-        user_tolerance = user_prefs.get("shedding_tolerance", "medium")
-        breed_shedding = breed.get("shedding", 3)
-        
-        tolerance_mapping = {"none": 1, "low": 2, "medium": 3, "high": 5}
-        user_tolerance_val = tolerance_mapping.get(user_tolerance, 3)
-        
-        if user_tolerance_val >= breed_shedding:
-            return 100
-        return max(0, 100 - ((breed_shedding - user_tolerance_val) * 25))
-    
-    def calculate_hypoallergenic_match(self, user_prefs: Dict, breed: Dict) -> float:
-        """Calcula compatibilidad para alé´´rgicos"""
-        allergies = user_prefs.get("household_allergies", "none")
-        is_hypoallergenic = breed.get("hypoallergenic", False)
-        
-        if allergies == "none":
-            return 70
-        if allergies in ["moderate", "severe"]:
-            return 100 if is_hypoallergenic else 20
-        if allergies == "mild":
-            return 90 if is_hypoallergenic else 50
-        return 70
-    
-    def calculate_first_time_match(self, user_prefs: Dict, breed: Dict) -> float:
-        """Calcula compatibilidad para due˜nos primerizos"""
-        is_first_time = user_prefs.get("first_time_owner", False)
-        good_for_first_time = breed.get("good_for_first_time", 3)
-        
-        if is_first_time:
-            return (good_for_first_time / 5) * 100
-        return 70
-    
-    def calculate_barking_match(self, user_prefs: Dict, breed: Dict) -> float:
-        """Calcula compatibilidad de tolerancia a ladridos"""
-        user_tolerance = user_prefs.get("barking_tolerance", "medium")
-        breed_barking = breed.get("barking_level", 3)
-        
-        tolerance_mapping = {"none": 1, "low": 2, "medium": 3, "high": 5}
-        user_tolerance_val = tolerance_mapping.get(user_tolerance, 3)
-        
-        if user_tolerance_val >= breed_barking:
-            return 100
-        return max(0, 100 - ((breed_barking - user_tolerance_val) * 30))
-    
-    def calculate_health_budget_match(self, user_prefs: Dict, breed: Dict) -> float:
-        """Calcula compatibilidad de presupuesto para salud"""
-        user_budget = user_prefs.get("vet_budget_monthly", "medium")
-        breed_health_issues = breed.get("health_issues", 3)
-        
-        budget_mapping = {"low": 1, "medium": 3, "high": 4, "unlimited": 5}
-        user_budget_val = budget_mapping.get(user_budget, 3)
-        
-        if user_budget_val >= breed_health_issues:
-            return 100
-        return max(0, (user_budget_val / breed_health_issues) * 100)
-    
-    def calculate_space_match(self, user_prefs: Dict, breed: Dict) -> float:
-        """Calcula compatibilidad de espacio"""
-        housing_size = user_prefs.get("housing_size_sqm", 100)
-        has_garden = user_prefs.get("has_garden", "no")
-        breed_size = breed.get("size_category", "medium")
-        
-        space_requirements = {"mini": 30, "small": 50, "medium": 80, "large": 120, "giant": 150}
-        required_space = space_requirements.get(breed_size, 80)
-        
-        garden_bonus = {"yes_large": 20, "yes_medium": 20, "yes_small": 10, "terrace": 10}.get(has_garden, 0)
-        
-        if housing_size >= required_space:
-            return min(100, 80 + garden_bonus)
-        return max(0, (housing_size / required_space) * 80 + garden_bonus)
-    
-    def calculate_category_score(self, category_id: str, user_prefs: Dict, breed: Dict) -> float:
-        """Calcula score para una categorí´´a especí´´fica"""
-        scores = []
-        
-        if category_id == "hogar":
-            scores = [self.calculate_space_match(user_prefs, breed), self.calculate_apartment_match(user_prefs, breed)]
-        elif category_id == "estilo_vida":
-            scores = [self.calculate_energy_match(user_prefs, breed), self.calculate_exercise_match(user_prefs, breed)]
-        elif category_id == "experiencia":
-            scores = [self.calculate_first_time_match(user_prefs, breed), self.calculate_barking_match(user_prefs, breed)]
-        elif category_id == "preferencias_fisicas":
-            scores = [self.calculate_size_match(user_prefs, breed), self.calculate_shedding_match(user_prefs, breed), self.calculate_grooming_match(user_prefs, breed)]
-        elif category_id == "salud":
-            scores = [self.calculate_hypoallergenic_match(user_prefs, breed), self.calculate_health_budget_match(user_prefs, breed)]
-        elif category_id == "personalidad":
-            scores = [self.calculate_energy_match(user_prefs, breed), self.calculate_children_match(user_prefs, breed)]
-        elif category_id == "cuidados":
-            scores = [self.calculate_grooming_match(user_prefs, breed), self.calculate_shedding_match(user_prefs, breed)]
-        elif category_id == "objetivos":
-            scores = [self.calculate_first_time_match(user_prefs, breed)]
-        
-        return sum(scores) / len(scores) if scores else 70
-    
-    def calculate_total_score(self, user_prefs: Dict, breed: Dict) -> Tuple[float, Dict[str, float]]:
-        """Calcula score total de compatibilidad"""
-        category_scores = {}
-        weighted_sum = 0
-        
-        for cat_id, weight in self.category_weights.items():
-            score = self.calculate_category_score(cat_id, user_prefs, breed)
-            category_scores[cat_id] = score
-            weighted_sum += score * weight
-        
-        return weighted_sum, category_scores
-    
-    def get_dealbreakers(self, user_prefs: Dict, breed: Dict) -> List[str]:
-        """Obtiene incompatibilidades crí´´ticas"""
-        dealbreakers = []
-        
-        if user_prefs.get("household_allergies") in ["severe", "moderate"] and not breed.get("hypoallergenic", False):
-            dealbreakers.append("No hipoalergé´´nico")
-        
-        if user_prefs.get("housing_type") == "apartamento_pequeno" and breed.get("size_category") in ["large", "giant"]:
-            dealbreakers.append("Tama˜no inadecuado")
-        
-        if user_prefs.get("first_time_owner", False) and breed.get("good_for_first_time", 3) <= 2:
-            dealbreakers.append("No recomendada para primerizos")
-        
-        return dealbreakers
-    
-    def score_breed(self, user_prefs: Dict, breed: Dict) -> BreedScore:
-        """Calcula score completo para una raza"""
-        total_score, category_scores = self.calculate_total_score(user_prefs, breed)
-        dealbreakers = self.get_dealbreakers(user_prefs, breed)
-        penalty = len(dealbreakers) * 15
-        final_score = max(0, total_score - penalty)
-        
-        return BreedScore(
-            breed_id=breed.get("id", ""),
-            breed_name=breed.get("name", ""),
-            breed_name_es=breed.get("name_es", ""),
-            total_score=round(total_score, 1),
-            category_scores={k: round(v, 1) for k, v in category_scores.items()},
-            match_percentage=round(final_score, 1),
-            key_traits=[f"{breed.get('size_category', 'medium').title()} size", f"Energy: {breed.get('energy_level', 3)}/5"],
-            considerations=[breed.get("special_needs", "")],
-            dealbreakers=dealbreakers
+        total = sum(raw_weights.values())
+        if total <= 0:
+            raise ValueError("Los pesos de categoría deben sumar más de 0")
+        # Re-normalizar es lo que garantiza que el score total sea 0-100
+        # aunque alguien edite los pesos del JSON y no sumen 1.
+        self.category_weights = {k: v / total for k, v in raw_weights.items()}
+        self._defaults = default_answers(questions)
+
+    def normalize_prefs(self, prefs: Mapping[str, Any]) -> Dict[str, Any]:
+        """Rellena con los defaults del cuestionario lo que el usuario no
+        haya respondido, para que un perfil parcial no cambie de sentido."""
+        merged = dict(self._defaults)
+        merged.update({k: v for k, v in prefs.items() if v not in (None, "")})
+        return merged
+
+    def dimension_scores(
+        self, prefs: Mapping[str, Any], breed: Breed
+    ) -> Dict[str, float]:
+        return {
+            name: fn(prefs, breed)
+            for dimensions in CATEGORY_DIMENSIONS.values()
+            for name, fn in dimensions.items()
+        }
+
+    def category_score(
+        self, category_id: str, prefs: Mapping[str, Any], breed: Breed
+    ) -> float:
+        dimensions = CATEGORY_DIMENSIONS.get(category_id)
+        if not dimensions:
+            return NEUTRAL
+        scores = [fn(prefs, breed) for fn in dimensions.values()]
+        return sum(scores) / len(scores)
+
+    def total_score(
+        self, prefs: Mapping[str, Any], breed: Breed
+    ) -> Tuple[float, Dict[str, float]]:
+        category_scores = {
+            cat_id: self.category_score(cat_id, prefs, breed)
+            for cat_id in self.category_weights
+        }
+        weighted = sum(
+            score * self.category_weights[cat_id]
+            for cat_id, score in category_scores.items()
         )
-    
-    def score_all_breeds(self, user_prefs: Dict) -> List[BreedScore]:
-        """Calcula scores para todas las razas"""
-        scores = [self.score_breed(user_prefs, breed) for breed in self.breeds]
-        scores.sort(key=lambda x: x.match_percentage, reverse=True)
+        return clamp(weighted), category_scores
+
+    def dealbreakers(self, prefs: Mapping[str, Any], breed: Breed) -> List[str]:
+        """Incompatibilidades críticas. Cada una resta DEALBREAKER_PENALTY."""
+        found: List[str] = []
+
+        if (
+            str(prefs.get("household_allergies")) in {"moderate", "severe"}
+            and not breed.hypoallergenic
+        ):
+            found.append("No es hipoalergénica y hay alergias en el hogar")
+
+        if (
+            str(prefs.get("housing_type")) == "apartamento_pequeno"
+            and breed.size_category in {"large", "giant"}
+        ):
+            found.append("Demasiado grande para un apartamento pequeño")
+
+        experience = _level(EXPERIENCE_LEVELS, prefs.get("dog_experience"), 2)
+        if (
+            _as_bool(prefs.get("first_time_owner"), fallback=experience <= 1)
+            and breed["good_for_first_time"] <= 2
+        ):
+            found.append("No recomendada para dueños primerizos")
+
+        # El 4º dealbreaker documentado en methodology.md, que faltaba.
+        available = _as_number(prefs.get("daily_exercise_time_minutes"), 60)
+        if available < breed.exercise_needs_daily_min * 0.6:
+            found.append(
+                f"Necesita al menos {breed.exercise_needs_daily_min} min "
+                "de ejercicio al día"
+            )
+
+        if (
+            str(prefs.get("has_children")) == "yes_0_3"
+            and breed["good_with_children"] <= 2
+        ):
+            found.append("Poco tolerante con niños muy pequeños")
+
+        return found
+
+    def considerations(self, prefs: Mapping[str, Any], breed: Breed) -> List[str]:
+        """Avisos que no descalifican pero conviene saber antes de decidir."""
+        notes: List[str] = []
+        if breed.special_needs:
+            notes.append(breed.special_needs)
+        if breed["grooming_needs"] >= 4:
+            notes.append("Requiere cepillado frecuente o peluquería profesional")
+        if breed["shedding"] >= 4:
+            notes.append("Suelta bastante pelo")
+        if breed["barking_level"] >= 4:
+            notes.append("Tiende a ladrar")
+        if breed["drooling"] >= 4:
+            notes.append("Babea")
+        if breed["wanderlust"] >= 4:
+            notes.append("Tendencia a escaparse: necesita vallado seguro")
+        if breed["prey_drive"] >= 4 and str(prefs.get("other_pets")) in {
+            "cats",
+            "both",
+        }:
+            notes.append(
+                "Instinto de presa alto: la convivencia con gatos exige trabajo"
+            )
+        if breed["health_issues"] >= 4:
+            notes.append("Raza con predisposición a problemas de salud")
+        cold_needed, heat_needed = CLIMATE_DEMANDS.get(
+            str(prefs.get("geographic_location")), (3, 3)
+        )
+        if breed["heat_tolerance"] < heat_needed:
+            notes.append("Lleva mal el calor de tu zona")
+        if breed["cold_tolerance"] < cold_needed:
+            notes.append("Lleva mal el frío de tu zona")
+        # dict.fromkeys preserva el orden y elimina duplicados.
+        return list(dict.fromkeys(n for n in notes if n))
+
+    def key_traits(self, breed: Breed) -> List[str]:
+        size_labels = {
+            "mini": "Tamaño mini",
+            "small": "Tamaño pequeño",
+            "medium": "Tamaño mediano",
+            "large": "Tamaño grande",
+            "giant": "Tamaño gigante",
+        }
+        energy_labels = {
+            1: "Muy tranquilo",
+            2: "Tranquilo",
+            3: "Energía media",
+            4: "Enérgico",
+            5: "Muy enérgico",
+        }
+        traits = [
+            size_labels.get(breed.size_category, breed.size_category),
+            f"{breed.weight_kg_min:g}-{breed.weight_kg_max:g} kg",
+            energy_labels.get(breed["energy_level"], "Energía media"),
+            f"{breed.exercise_needs_daily_min}-{breed.exercise_needs_daily_max} "
+            "min de ejercicio al día",
+        ]
+        traits.extend(breed.temperament[:3])
+        if breed.hypoallergenic:
+            traits.append("Hipoalergénica")
+        return traits
+
+    def score_breed(self, prefs: Mapping[str, Any], breed: Breed) -> BreedScore:
+        prefs = self.normalize_prefs(prefs)
+        total, category_scores = self.total_score(prefs, breed)
+        dealbreakers = self.dealbreakers(prefs, breed)
+        final = clamp(total - len(dealbreakers) * DEALBREAKER_PENALTY)
+        return BreedScore(
+            breed_id=breed.id,
+            breed_name=breed.name,
+            breed_name_es=breed.name_es,
+            total_score=round(total, 1),
+            category_scores={k: round(v, 1) for k, v in category_scores.items()},
+            dimension_scores={
+                k: round(v, 1) for k, v in self.dimension_scores(prefs, breed).items()
+            },
+            match_percentage=round(final, 1),
+            key_traits=self.key_traits(breed),
+            considerations=self.considerations(prefs, breed),
+            dealbreakers=dealbreakers,
+            rating=rating_for(final),
+        )
+
+    def score_all_breeds(self, prefs: Mapping[str, Any]) -> List[BreedScore]:
+        prefs = self.normalize_prefs(prefs)
+        scores = [self.score_breed(prefs, breed) for breed in self.breeds]
+        # `breed_id` como criterio secundario: sin él, dos razas empatadas
+        # cambiarían de orden según el orden del CSV.
+        scores.sort(key=lambda s: (-s.match_percentage, s.breed_id))
         return scores
-
-
-def load_data():
-    """Carga datos desde archivos JSON"""
-    with open("database/breed_characteristics.json", "r", encoding="utf-8") as f:
-        breeds_data = json.load(f)["breeds"]
-    with open("questionnaire/questions.json", "r", encoding="utf-8") as f:
-        questions_data = json.load(f)
-    return breeds_data, questions_data
-
-
-if __name__ == "__main__":
-    breeds_data, questions_data = load_data()
-    calculator = CompatibilityCalculator(breeds_data, questions_data)
-    
-    example_prefs = {
-        "housing_type": "apartamento_mediano", "housing_size_sqm": 85,
-        "has_garden": "terrace", "daily_exercise_time_minutes": 60,
-        "dog_experience": "basic", "first_time_owner": True,
-        "preferred_size": "small", "shedding_tolerance": "low",
-        "grooming_willingness": "moderate", "household_allergies": "none",
-        "desired_energy": "medium", "barking_tolerance": "low",
-        "kids_compatibility": "not_important", "vet_budget_monthly": "medium"
-    }
-    
-    scores = calculator.score_all_breeds(example_prefs)
-    print("Top 10 razas recomendadas:\n")
-    for i, score in enumerate(scores[:10], 1):
-        print(f"{i}. {score.breed_name_es} - {score.match_percentage}% compatible")

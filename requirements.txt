@@ -1,17 +1,7 @@
-# Dog Breed Selector - Dependencies
+# Dog Breed Selector - Dependencias
 # Python 3.9+
+#
+# El motor (src/) solo usa la librería estándar. Lo de abajo es
+# exclusivamente para desarrollo y tests.
 
-# API Framework
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-pydantic==2.5.0
-
-# Data processing
-pandas==2.1.3
-
-# Testing
 pytest==7.4.3
-pytest-asyncio==0.21.1
-
-# Utilities
-python-dotenv==1.0.0
