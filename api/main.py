@@ -51,7 +51,6 @@ class QuestionnaireResponse(BaseModel):
     housing_size_sqm: Optional[int] = Field(None, ge=20, le=500)
     has_garden: Optional[str] = None
     geographic_location: Optional[str] = None
-    household_size: Optional[int] = Field(None, ge=1, le=12)
     has_children: Optional[str] = None
     activity_level: Optional[str] = None
     daily_exercise_time_minutes: Optional[int] = Field(None, ge=10, le=300)

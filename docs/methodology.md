@@ -53,13 +53,37 @@ El sistema Dog Breed Selector utiliza un algoritmo de **compatibilidad ponderada
 ## Fórmula de Compatibilidad
 
 ```
-Score(Raza) = Σ(Peso_Categoría × Match_Categoría) - Penalizaciones
+Score(Raza) = [Σ(Peso_Categoría × Match_Categoría) × Multiplicador_Alineación] - Penalizaciones
 ```
 
 Donde:
 - **Peso_Categoría**: Importancia relativa (0.0 - 1.0)
 - **Match_Categoría**: Porcentaje de coincidencia (0 - 100)
+- **Multiplicador_Alineación**: corrección sobre tamaño y energía deseados (ver abajo)
 - **Penalizaciones**: Incompatibilidades críticas (-15 puntos cada una)
+
+### Por qué existe el multiplicador de alineación
+
+Promediar 8 categorías diluye una preferencia explícita: un desajuste total
+en tamaño (pedir "gigante" y evaluar un Cocker Spaniel) solo pesa 1/16 del
+score final si se trata como una dimensión más, así que la raza mal
+clasificada seguía ganando por tener buen puntaje mediocre en todo lo
+demás. `preferred_size` y `desired_energy` son preferencias explícitas y
+difíciles de compensar en la vida real (un piso no se hace más grande), así
+que multiplican el score entero en vez de promediarse:
+
+```
+factor_tamaño  = 0.55 + 0.45 × (match_size / 100)     # rango: 0.55 - 1.0
+factor_energía = 0.75 + 0.25 × (match_energy / 100)   # rango: 0.75 - 1.0
+Multiplicador_Alineación = factor_tamaño × factor_energía
+```
+
+Con "sin preferencia" (match_size=70, neutro) el recorte es leve (~9%); con
+un desajuste total (match_size=10) el score cae más de un 40%, suficiente
+para que una raza del tamaño correcto la supere aunque sea débil en otras
+categorías. Ver `docs/auditoria-datos.md` y los tests de
+`tests/test_calculator.py::test_explicit_size_preference_dominates_the_ranking`
+para la regresión que motivó este cambio.
 
 ## Dealbreakers (Incompatibilidades Críticas)
 

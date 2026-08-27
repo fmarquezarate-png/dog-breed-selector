@@ -250,9 +250,17 @@ def match_alone_time(prefs: Mapping[str, Any], breed: Breed) -> float:
 
 
 def match_apartment(prefs: Mapping[str, Any], breed: Breed) -> float:
+    """`apartment_friendly` mezcla dos cosas distintas: tamaño/ruido (fijos)
+    y necesidad de actividad (no lo es). Un Border Collie que recibe sus
+    90-120 min diarios vive perfectamente en un piso; el rasgo crudo del
+    CSV lo penaliza igual que si se quedara todo el día sin salir. Se
+    mezcla con `match_exercise` para que ese compromiso cuente.
+    """
     housing = str(prefs.get("housing_type", "casa_mediana"))
     if housing in APARTMENT_TYPES:
-        return clamp((breed["apartment_friendly"] / 5) * 100)
+        base = clamp((breed["apartment_friendly"] / 5) * 100)
+        exercise_met = match_exercise(prefs, breed)
+        return clamp(base * 0.6 + exercise_met * 0.4)
     # En una casa, que la raza sea poco apta para piso deja de ser relevante.
     return 100.0
 
@@ -456,6 +464,24 @@ class CompatibilityCalculator:
         scores = [fn(prefs, breed) for fn in dimensions.values()]
         return sum(scores) / len(scores)
 
+    def alignment_multiplier(self, prefs: Mapping[str, Any], breed: Breed) -> float:
+        """Corrige el punto ciego de promediar por categorías: un desajuste
+        grave en UNA dimensión (p.ej. pedir "gigante" y recibir un Cocker)
+        se diluye a un puñado de puntos cuando solo pesa como 1/8 de 1
+        categoría entre 8. `preferred_size` y `desired_energy` son
+        preferencias explícitas y difíciles de compensar en la vida real
+        (un piso no se hace más grande, un perro gigante no se hace mini),
+        así que actúan como multiplicador sobre el score entero en vez de
+        sumar como una entrada más al promedio.
+        """
+        size_score = match_size(prefs, breed)
+        energy_score = match_energy(prefs, breed)
+        # Rango elegido para que un desajuste total corte el score a más de
+        # la mitad, pero "sin preferencia" (score=NEUTRAL=70) apenas reste.
+        size_factor = 0.55 + 0.45 * (size_score / 100)
+        energy_factor = 0.75 + 0.25 * (energy_score / 100)
+        return size_factor * energy_factor
+
     def total_score(
         self, prefs: Mapping[str, Any], breed: Breed
     ) -> Tuple[float, Dict[str, float]]:
@@ -467,6 +493,7 @@ class CompatibilityCalculator:
             score * self.category_weights[cat_id]
             for cat_id, score in category_scores.items()
         )
+        weighted *= self.alignment_multiplier(prefs, breed)
         return clamp(weighted), category_scores
 
     def dealbreakers(self, prefs: Mapping[str, Any], breed: Breed) -> List[str]:
