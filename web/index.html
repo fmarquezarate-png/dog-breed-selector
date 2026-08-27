@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>🐕 Dog Breed Selector</title>
+<meta name="description" content="Responde un cuestionario de 8 pasos y encontrá la raza de perro ideal para tu casa, tu tiempo y tu estilo de vida.">
+<meta property="og:title" content="🐕 Dog Breed Selector">
+<meta property="og:description" content="Responde un cuestionario de 8 pasos y encontrá la raza de perro ideal para tu casa, tu tiempo y tu estilo de vida.">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐕</text></svg>">
 <style>
   :root {
@@ -169,6 +174,11 @@
   .dots span { width: 6px; height: 6px; border-radius: 50%; background: var(--border); }
   .dots span.done { background: var(--accent); }
   .dots span.current { background: var(--accent); transform: scale(1.4); }
+  .restart-link { text-align: center; margin-top: 4px; }
+  .restart-link button {
+    background: none; border: none; color: var(--text-muted);
+    font-size: 0.8em; text-decoration: underline; cursor: pointer; font-family: inherit;
+  }
 
   /* --- Results --- */
   #results { margin-top: 8px; }
@@ -196,14 +206,25 @@
     font-size: 0.95em;
   }
   .rating-label { color: var(--text-muted); font-size: 0.88em; }
+  .why-row { font-size: 0.83em; color: var(--success); font-weight: 600; margin-bottom: 10px; }
+  .nudge {
+    background: var(--surface-muted);
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 0.85em;
+    color: var(--text-muted);
+    margin-bottom: 14px;
+  }
   .chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
   .chip {
     background: var(--surface-muted);
     border: 1px solid var(--border);
     border-radius: 999px;
-    padding: 4px 11px;
-    font-size: 0.8em;
+    padding: 3px 10px;
+    font-size: 0.75em;
     color: var(--text);
+    white-space: nowrap;
   }
   .note-list { margin-top: 8px; font-size: 0.88em; }
   .note-list .note { padding: 3px 0; color: var(--text-muted); }
@@ -243,6 +264,17 @@
 
   [hidden] { display: none !important; }
 
+  .boot-state { text-align: center; color: var(--text-muted); }
+  .boot-state p { margin-bottom: 14px; }
+  .spinner {
+    width: 28px; height: 28px; margin: 0 auto 14px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
   @media (max-width: 420px) {
     body { padding: 14px 10px 40px; }
     .card { padding: 18px; }
@@ -256,8 +288,20 @@
       <p>Responde 8 pasos cortos y encuentra la raza de perro ideal para tu vida</p>
     </header>
 
-    <main id="wizard" class="card">
-      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    <div id="bootLoading" class="card boot-state">
+      <div class="spinner"></div>
+      <p>Cargando el cuestionario…</p>
+    </div>
+
+    <div id="bootError" class="card boot-state" hidden>
+      <p>⚠️ No se pudo cargar el cuestionario. Puede ser tu conexión o un problema temporal del sitio.</p>
+      <button type="button" class="btn-primary">Reintentar</button>
+    </div>
+
+    <main id="wizard" class="card" hidden>
+      <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" id="progressTrack">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
       <p class="step-label" id="stepLabel">Paso 1</p>
       <form id="stepForm">
         <h2 class="category-title" id="categoryTitle"></h2>
@@ -268,6 +312,7 @@
         </div>
       </form>
       <div class="dots" id="dots"></div>
+      <p class="restart-link"><button type="button" id="btnRestart">Empezar de nuevo</button></p>
     </main>
 
     <section id="results" class="card" hidden></section>
@@ -288,25 +333,65 @@ let categories = [];
 let stepIndex = 0;
 const answers = {};
 
+const STORAGE_KEY = 'dbs_answers_v1';
+
+function loadSavedAnswers() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {}; // localStorage puede fallar (privado, cuota, navegador viejo): seguir sin recordar nada
+  }
+}
+
+function saveAnswers() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(answers));
+  } catch {
+    // no pasa nada si no se puede persistir; el formulario sigue funcionando en memoria
+  }
+}
+
+async function fetchJSON(path) {
+  const res = await fetch(path);
+  if (!res.ok) throw new Error(`${path}: HTTP ${res.status}`);
+  return res.json();
+}
+
 async function boot() {
-  const [q, b] = await Promise.all([
-    fetch('./questions.json').then(r => r.json()),
-    fetch('./breeds.json').then(r => r.json()),
-  ]);
+  let q, b;
+  try {
+    [q, b] = await Promise.all([fetchJSON('./questions.json'), fetchJSON('./breeds.json')]);
+  } catch (err) {
+    showBootError();
+    return;
+  }
   QUESTIONS = q;
   BREEDS = b.breeds;
   CALC = createCalculator(q.categories);
   categories = Object.entries(q.categories); // [ [id, {label, questions...}], ... ]
 
-  // Defaults, para que avanzar sin tocar nada siga produciendo un resultado válido.
+  const saved = loadSavedAnswers();
+  // Defaults primero, respuestas guardadas encima: así avanzar sin tocar nada
+  // sigue produciendo un resultado válido, y volver a la pestaña no borra nada.
   for (const [, cat] of categories) {
     for (const question of cat.questions) {
       if ('default' in question) answers[question.id] = question.default;
+      if (question.id in saved) answers[question.id] = saved[question.id];
       OPTION_LABELS[question.id] = Object.fromEntries((question.options || []).map(o => [o.value, o.label]));
     }
   }
 
+  document.getElementById('wizard').hidden = false;
+  document.getElementById('bootLoading').hidden = true;
   renderStep();
+}
+
+function showBootError() {
+  document.getElementById('bootLoading').hidden = true;
+  const el = document.getElementById('bootError');
+  el.hidden = false;
+  el.querySelector('button').addEventListener('click', () => location.reload());
 }
 
 function fieldHTML(question) {
@@ -317,7 +402,7 @@ function fieldHTML(question) {
       <div class="field" data-id="${question.id}">
         <label class="field-label" for="f_${question.id}">${question.label}</label>
         ${help}
-        <input type="number" id="f_${question.id}" min="${question.min ?? ''}" max="${question.max ?? ''}" value="${value ?? ''}">
+        <input type="number" inputmode="numeric" id="f_${question.id}" min="${question.min ?? ''}" max="${question.max ?? ''}" value="${value ?? ''}">
       </div>`;
   }
   if (question.type === 'boolean') {
@@ -326,8 +411,8 @@ function fieldHTML(question) {
         <label class="field-label">${question.label}</label>
         ${help}
         <div class="segmented" data-bool="${question.id}">
-          <button type="button" data-val="true" class="${value === true ? 'active' : ''}">Sí</button>
-          <button type="button" data-val="false" class="${value === false ? 'active' : ''}">No</button>
+          <button type="button" data-val="true" aria-pressed="${value === true}" class="${value === true ? 'active' : ''}">Sí</button>
+          <button type="button" data-val="false" aria-pressed="${value === false}" class="${value === false ? 'active' : ''}">No</button>
         </div>
       </div>`;
   }
@@ -343,11 +428,23 @@ function fieldHTML(question) {
     </div>`;
 }
 
+const CATEGORY_ICONS = {
+  hogar: '🏠', estilo_vida: '🏃', experiencia: '📚', preferencias_fisicas: '🎨',
+  salud: '🏥', personalidad: '🐾', cuidados: '✂️', objetivos: '🎯',
+};
+
+function setAnswer(id, value) {
+  answers[id] = value;
+  saveAnswers();
+}
+
 function renderStep() {
   const [catId, cat] = categories[stepIndex];
-  document.getElementById('categoryTitle').textContent = cat.label;
+  document.getElementById('categoryTitle').textContent = `${CATEGORY_ICONS[catId] || ''} ${cat.label}`;
   document.getElementById('stepLabel').textContent = `Paso ${stepIndex + 1} de ${categories.length}`;
-  document.getElementById('progressFill').style.width = `${((stepIndex + 1) / categories.length) * 100}%`;
+  const pct = Math.round(((stepIndex + 1) / categories.length) * 100);
+  document.getElementById('progressFill').style.width = `${pct}%`;
+  document.getElementById('progressTrack').setAttribute('aria-valuenow', String(pct));
   document.getElementById('stepFields').innerHTML = cat.questions.map(fieldHTML).join('');
 
   document.getElementById('btnBack').disabled = stepIndex === 0;
@@ -360,17 +457,35 @@ function renderStep() {
       const wrap = document.querySelector(`[data-bool="${question.id}"]`);
       wrap.querySelectorAll('button').forEach(btn => {
         btn.addEventListener('click', () => {
-          answers[question.id] = btn.dataset.val === 'true';
-          wrap.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+          setAnswer(question.id, btn.dataset.val === 'true');
+          wrap.querySelectorAll('button').forEach(b => {
+            b.classList.remove('active');
+            b.setAttribute('aria-pressed', 'false');
+          });
           btn.classList.add('active');
+          btn.setAttribute('aria-pressed', 'true');
         });
+      });
+    } else if (question.type === 'number') {
+      const el = document.getElementById(`f_${question.id}`);
+      el.addEventListener('input', () => {
+        // No pisar la respuesta con 0 mientras el usuario borra el campo para
+        // reescribirlo — un 0 silencioso aquí puede disparar dealbreakers falsos.
+        if (el.value === '') return;
+        const n = Number(el.value);
+        if (Number.isFinite(n)) setAnswer(question.id, n);
+      });
+      el.addEventListener('blur', () => {
+        let n = Number(el.value);
+        if (!Number.isFinite(n)) n = answers[question.id] ?? question.default;
+        if (question.min != null) n = Math.max(question.min, n);
+        if (question.max != null) n = Math.min(question.max, n);
+        el.value = n;
+        setAnswer(question.id, n);
       });
     } else {
       const el = document.getElementById(`f_${question.id}`);
-      const eventName = question.type === 'number' ? 'input' : 'change';
-      el.addEventListener(eventName, () => {
-        answers[question.id] = question.type === 'number' ? Number(el.value) : el.value;
-      });
+      el.addEventListener('change', () => setAnswer(question.id, el.value));
     }
   }
 
@@ -387,6 +502,19 @@ function renderDots() {
 
 document.getElementById('btnBack').addEventListener('click', () => {
   if (stepIndex > 0) { stepIndex -= 1; renderStep(); }
+});
+
+document.getElementById('btnRestart').addEventListener('click', () => {
+  if (!confirm('¿Borrar tus respuestas y empezar de nuevo?')) return;
+  for (const key of Object.keys(answers)) delete answers[key];
+  for (const [, cat] of categories) {
+    for (const question of cat.questions) {
+      if ('default' in question) answers[question.id] = question.default;
+    }
+  }
+  try { localStorage.removeItem(STORAGE_KEY); } catch {}
+  stepIndex = 0;
+  renderStep();
 });
 
 document.getElementById('stepForm').addEventListener('submit', (e) => {
@@ -412,7 +540,19 @@ function renderBreedNotes(score) {
   return items.length ? `<div class="note-list">${items.join('')}</div>` : '';
 }
 
+function topStrengths(score) {
+  const labels = Object.fromEntries(categories.map(([id, cat]) => [id, cat.label]));
+  return Object.entries(score.category_scores)
+    .filter(([, value]) => value >= 75)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([id]) => labels[id] || id);
+}
+
 function heroCardHTML(score, rank) {
+  const strengths = topStrengths(score);
+  const why = strengths.length
+    ? `<p class="why-row">✓ Coincide especialmente en: ${strengths.join(' · ')}</p>` : '';
   return `
     <div class="hero-card">
       <div class="hero-rank">${rank === 1 ? 'Tu raza ideal' : `#${rank} recomendado`}</div>
@@ -421,6 +561,7 @@ function heroCardHTML(score, rank) {
         <span class="score-pill">${score.match_percentage}% compatible</span>
         <span class="rating-label">${score.rating}</span>
       </div>
+      ${why}
       <div class="chip-row">${score.key_traits.map(t => `<span class="chip">${t}</span>`).join('')}</div>
       ${renderBreedNotes(score)}
     </div>`;
@@ -441,6 +582,8 @@ function buildShareText(results) {
     '',
     'Top 3:',
     ...results.slice(0, 3).map((s, i) => `${i + 1}. ${s.breed_name_es} — ${s.match_percentage}%`),
+    '',
+    `Hacé el test vos también: ${location.origin}${location.pathname}`,
   ];
   return lines.join('\n');
 }
@@ -455,12 +598,17 @@ function showResults() {
 
   const moreRows = top5.slice(1, 3).map((s, i) => compactRowHTML(s, i + 2)).join('');
   const extraRows = top5.slice(3, 5).map((s, i) => compactRowHTML(s, i + 4)).join('');
+  const vagueAnswers = answers.preferred_size === 'no_preference';
+  const nudge = vagueAnswers
+    ? `<p class="nudge">💡 Elegiste "sin preferencia" en tamaño — respondé esa pregunta para afinar mucho más el resultado.</p>`
+    : '';
 
   section.innerHTML = `
     <div class="results-header">
       <h2>🏆 Tus razas ideales</h2>
       <p>Según tus respuestas, esto es lo que más encaja contigo</p>
     </div>
+    ${nudge}
     ${heroCardHTML(top5[0], 1)}
     ${moreRows}
     ${extraRows ? `<details class="more-results"><summary>Ver 2 más</summary>${extraRows}</details>` : ''}
@@ -468,7 +616,7 @@ function showResults() {
       <button class="btn-secondary" id="btnEdit">✏️ Editar respuestas</button>
       <button class="btn-primary" id="btnShare">📤 Compartir resultado</button>
     </div>
-    <p id="shareStatus"></p>
+    <p id="shareStatus" aria-live="polite"></p>
   `;
 
   document.getElementById('btnEdit').addEventListener('click', () => {
