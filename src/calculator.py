@@ -1,4 +1,6 @@
-"""Dog Breed Selector - Calculator Module"""
+"""Dog Breed Selector - Calculator Module
+Mó´´´dulo para cá ´lculo de compatibilidad entre usuario y razas de perros
+"""
 
 import json
 from typing import Dict, List, Any, Tuple
@@ -7,7 +9,7 @@ from dataclasses import dataclass
 
 @dataclass
 class BreedScore:
-    """Puntuaciò´´´n de una raza para un usuario especí´´fico"""
+    """Puntuació´´´n de una raza para un usuario especí´´fico"""
     breed_id: str
     breed_name: str
     breed_name_es: str
@@ -135,7 +137,7 @@ class CompatibilityCalculator:
         return 70
     
     def calculate_first_time_match(self, user_prefs: Dict, breed: Dict) -> float:
-        """Calcula compatibilidad para due˜nos primerizos"""
+        """Calcula compatibilidad para dueñ´´´os primerizos"""
         is_first_time = user_prefs.get("first_time_owner", False)
         good_for_first_time = breed.get("good_for_first_time", 3)
         
@@ -225,7 +227,7 @@ class CompatibilityCalculator:
             dealbreakers.append("No hipoalergé´´nico")
         
         if user_prefs.get("housing_type") == "apartamento_pequeno" and breed.get("size_category") in ["large", "giant"]:
-            dealbreakers.append("Tama˜no inadecuado")
+            dealbreakers.append("Tamañ´´´o inadecuado")
         
         if user_prefs.get("first_time_owner", False) and breed.get("good_for_first_time", 3) <= 2:
             dealbreakers.append("No recomendada para primerizos")
