@@ -10,10 +10,11 @@ from typing import Dict, List, Optional, Any
 import json
 import os
 
-# Importar calculador
+# Importar el motor de recomendación
 import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
-from calculator import CompatibilityCalculator, load_data, BreedScore
+from breeds import load_breeds, load_questions
+from calculator import CompatibilityCalculator
 
 # Inicializar FastAPI
 app = FastAPI(
@@ -32,32 +33,46 @@ app.add_middleware(
 )
 
 # Cargar datos al iniciar
-breeds_data, questions_data = load_data()
+breeds_data = load_breeds()
+questions_data = load_questions()
 calculator = CompatibilityCalculator(breeds_data, questions_data)
+breeds_by_id = {b.id: b for b in breeds_data}
 
 
 # Modelos Pydantic
 class QuestionnaireResponse(BaseModel):
-    """Respuesta del cuestionario del usuario"""
-    housing_type: str = Field(..., description="Tipo de vivienda")
-    housing_size_sqm: int = Field(..., ge=20, le=500, description="Metros cuadrados")
-    has_garden: str = Field(..., description="Espacios exteriores")
-    household_size: int = Field(..., ge=1, le=10, description="Personas en el hogar")
-    has_children: str = Field(..., description="Ninos en el hogar")
-    activity_level: str = Field(..., description="Nivel de actividad fisica")
-    daily_exercise_time_minutes: int = Field(..., ge=15, le=300, description="Minutos de ejercicio diario")
-    work_schedule: str = Field(..., description="Horario laboral")
-    dog_experience: str = Field(..., description="Experiencia con perros")
-    first_time_owner: bool = Field(..., description="Es su primer perro")
-    preferred_size: str = Field(..., description="Tamano preferido")
-    shedding_tolerance: str = Field(..., description="Tolerancia a muda")
-    grooming_willingness: str = Field(..., description="Disposicion para grooming")
-    household_allergies: str = Field(..., description="Alergias en el hogar")
-    desired_energy: str = Field(..., description="Nivel de energia deseado")
-    barking_tolerance: str = Field(..., description="Tolerancia al ladrido")
-    kids_compatibility: str = Field(..., description="Importancia compatibilidad con ninos")
-    vet_budget_monthly: str = Field(..., description="Presupuesto veterinario")
-    obedience_expectations: str = Field(..., description="Expectativas de obediencia")
+    """Respuesta del cuestionario del usuario.
+
+    Todos los campos son opcionales: `CompatibilityCalculator` rellena lo
+    que falte con los valores por defecto de `questionnaire/questions.json`,
+    así que un perfil parcial no debe rechazarse con un 422.
+    """
+    housing_type: Optional[str] = None
+    housing_size_sqm: Optional[int] = Field(None, ge=20, le=500)
+    has_garden: Optional[str] = None
+    geographic_location: Optional[str] = None
+    household_size: Optional[int] = Field(None, ge=1, le=12)
+    has_children: Optional[str] = None
+    activity_level: Optional[str] = None
+    daily_exercise_time_minutes: Optional[int] = Field(None, ge=10, le=300)
+    work_schedule: Optional[str] = None
+    dog_experience: Optional[str] = None
+    first_time_owner: Optional[bool] = None
+    preferred_size: Optional[str] = None
+    shedding_tolerance: Optional[str] = None
+    drooling_tolerance: Optional[str] = None
+    grooming_willingness: Optional[str] = None
+    household_allergies: Optional[str] = None
+    desired_energy: Optional[str] = None
+    barking_tolerance: Optional[str] = None
+    kids_compatibility: Optional[str] = None
+    other_pets: Optional[str] = None
+    vet_budget_monthly: Optional[str] = None
+    obedience_expectations: Optional[str] = None
+    main_purpose: Optional[str] = None
+
+    def to_answers(self) -> Dict[str, Any]:
+        return {k: v for k, v in self.model_dump().items() if v is not None}
 
 
 class BreedRecommendation(BaseModel):
@@ -115,7 +130,7 @@ async def get_questions(category: Optional[str] = None):
 async def get_recommendations(response: QuestionnaireResponse, top_n: int = Query(10, ge=1, le=50)):
     """Obtener recomendaciones de razas basadas en respuestas"""
     try:
-        answers = response.model_dump()
+        answers = response.to_answers()
         scores = calculator.score_all_breeds(answers)
         
         recommendations = []
@@ -152,29 +167,29 @@ async def get_breeds(
     limit: int = Query(50, ge=1, le=200)
 ):
     """Obtener lista de razas con filtros opcionales"""
-    results = breeds_data.copy()
-    
+    results = list(breeds_data)
+
     if size:
-        results = [b for b in results if b.get("size_category") == size]
-    
+        results = [b for b in results if b.size_category == size]
+
     if hypoallergenic is not None:
-        results = [b for b in results if b.get("hypoallergenic") == hypoallergenic]
-    
+        results = [b for b in results if b.hypoallergenic == hypoallergenic]
+
     if apartment_friendly_min is not None:
-        results = [b for b in results if b.get("apartment_friendly", 0) >= apartment_friendly_min]
-    
+        results = [b for b in results if b["apartment_friendly"] >= apartment_friendly_min]
+
     return {
         "success": True,
         "count": len(results),
         "breeds": [{
-            "id": b.get("id"),
-            "name": b.get("name"),
-            "name_es": b.get("name_es"),
-            "size_category": b.get("size_category"),
-            "hypoallergenic": b.get("hypoallergenic"),
-            "apartment_friendly": b.get("apartment_friendly"),
-            "energy_level": b.get("energy_level"),
-            "good_with_children": b.get("good_with_children")
+            "id": b.id,
+            "name": b.name,
+            "name_es": b.name_es,
+            "size_category": b.size_category,
+            "hypoallergenic": b.hypoallergenic,
+            "apartment_friendly": b["apartment_friendly"],
+            "energy_level": b["energy_level"],
+            "good_with_children": b["good_with_children"]
         } for b in results[:limit]]
     }
 
@@ -182,11 +197,10 @@ async def get_breeds(
 @app.get("/api/breeds/{breed_id}")
 async def get_breed(breed_id: str):
     """Obtener detalles de una raza especifica"""
-    for breed in breeds_data:
-        if breed.get("id") == breed_id:
-            return {"success": True, "breed": breed}
-    
-    raise HTTPException(status_code=404, detail=f"Raza '{breed_id}' no encontrada")
+    breed = breeds_by_id.get(breed_id)
+    if breed is None:
+        raise HTTPException(status_code=404, detail=f"Raza '{breed_id}' no encontrada")
+    return {"success": True, "breed": breed.to_dict()}
 
 
 @app.get("/api/search")
@@ -194,27 +208,26 @@ async def search_breeds(q: str = Query(..., min_length=2, description="Termino d
     """Buscar razas por nombre o caracteristicas"""
     query_lower = q.lower()
     results = []
-    
+
     for breed in breeds_data:
-        if query_lower in breed.get("name", "").lower() or query_lower in breed.get("name_es", "").lower():
+        if query_lower in breed.name.lower() or query_lower in breed.name_es.lower():
             results.append(breed)
             continue
-        
-        temperament = breed.get("temperament", [])
-        if any(query_lower in t.lower() for t in temperament):
+
+        if any(query_lower in t.lower() for t in breed.temperament):
             results.append(breed)
             continue
-    
+
     return {
         "success": True,
         "query": q,
         "count": len(results),
         "breeds": [{
-            "id": b.get("id"),
-            "name": b.get("name"),
-            "name_es": b.get("name_es"),
-            "size_category": b.get("size_category"),
-            "temperament": b.get("temperament", [])
+            "id": b.id,
+            "name": b.name,
+            "name_es": b.name_es,
+            "size_category": b.size_category,
+            "temperament": b.temperament
         } for b in results[:20]]
     }
 

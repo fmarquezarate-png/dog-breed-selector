@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🐕 Dog Breed Selector - Encuentra tu Raza Ideal</title>
+    <title>🐕 Dog Breed Selector</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
@@ -17,10 +17,15 @@
         .form-group { margin-bottom: 20px; }
         label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
         select, input[type="number"] { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; }
+        select:focus, input[type="number"]:focus { outline: none; border-color: #667eea; }
         button { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 15px 40px; font-size: 18px; border-radius: 50px; cursor: pointer; display: block; margin: 30px auto; }
+        button:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4); }
         .breed-card { background: #f8f9ff; border-left: 4px solid #667eea; padding: 20px; margin-bottom: 20px; border-radius: 8px; }
         .breed-card h3 { color: #667eea; margin-bottom: 10px; }
         .match-score { display: inline-block; background: #667eea; color: white; padding: 5px 15px; border-radius: 20px; font-weight: bold; margin-bottom: 15px; }
+        .breed-card ul { list-style: none; margin-top: 10px; }
+        .breed-card li { padding: 5px 0; color: #555; }
+        .breed-card li:before { content: "✓ "; color: #667eea; font-weight: bold; }
         footer { text-align: center; color: white; margin-top: 40px; opacity: 0.8; }
     </style>
 </head>
@@ -40,9 +45,12 @@
                         <label for="housing_type">Tipo de vivienda:</label>
                         <select id="housing_type" name="housing_type" required>
                             <option value="">Selecciona...</option>
-                            <option value="apartamento_mediano">Apartamento mediano (70-120m2)</option>
-                            <option value="apartamento_grande">Apartamento grande (>120m2)</option>
+                            <option value="casa_grande">Casa grande (>200m2)</option>
                             <option value="casa_mediana">Casa mediana (100-200m2)</option>
+                            <option value="casa_pequena">Casa pequeña (<100m2)</option>
+                            <option value="apartamento_grande">Apartamento grande (>120m2)</option>
+                            <option value="apartamento_mediano">Apartamento mediano (70-120m2)</option>
+                            <option value="apartamento_pequeno">Apartamento pequeño (<70m2)</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -53,10 +61,26 @@
                         <label for="has_garden">Espacios exteriores:</label>
                         <select id="has_garden" name="has_garden" required>
                             <option value="">Selecciona...</option>
-                            <option value="terrace">Terraza/balcó´´´n</option>
-                            <option value="yes_small">Jardí´´n pequeño (<20m2)</option>
-                            <option value="yes_medium">Jardí´´n mediano (20-50m2)</option>
+                            <option value="yes_large">Sí, jardín grande (>50m2)</option>
+                            <option value="yes_medium">Sí, jardín mediano (20-50m2)</option>
+                            <option value="yes_small">Sí, jardín pequeño (<20m2)</option>
+                            <option value="terrace">Terraza/balcón</option>
                             <option value="no">No tengo espacios exteriores</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="household_size">Personas en el hogar:</label>
+                        <input type="number" id="household_size" name="household_size" min="1" max="10" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="has_children">Niños en el hogar:</label>
+                        <select id="has_children" name="has_children" required>
+                            <option value="">Selecciona...</option>
+                            <option value="no">No hay niños</option>
+                            <option value="yes_0_3">Sí, bebés (0-3 años)</option>
+                            <option value="yes_4_8">Sí, niños pequeños (4-8 años)</option>
+                            <option value="yes_9_14">Sí, niños (9-14 años)</option>
+                            <option value="yes_15_plus">Sí, adolescentes (15+ años)</option>
                         </select>
                     </div>
                 </div>
@@ -64,17 +88,29 @@
                 <div class="form-section">
                     <h3>🏃 Estilo de Vida</h3>
                     <div class="form-group">
-                        <label for="activity_level">Nivel de actividad fí´´sica:</label>
+                        <label for="activity_level">Nivel de actividad física:</label>
                         <select id="activity_level" name="activity_level" required>
                             <option value="">Selecciona...</option>
                             <option value="sedentary">Sedentario</option>
+                            <option value="light">Ligero</option>
                             <option value="moderate">Moderado</option>
                             <option value="active">Activo</option>
+                            <option value="very_active">Muy activo</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label for="daily_exercise_time_minutes">Tiempo diario para ejercicio (minutos):</label>
                         <input type="number" id="daily_exercise_time_minutes" name="daily_exercise_time_minutes" min="15" max="300" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="work_schedule">Horario laboral:</label>
+                        <select id="work_schedule" name="work_schedule" required>
+                            <option value="">Selecciona...</option>
+                            <option value="home_full">Desde casa</option>
+                            <option value="office_8h">Oficina 8h</option>
+                            <option value="office_10h_plus">Oficina 10h+</option>
+                            <option value="frequent_travel">Viajo frecuentemente</option>
+                        </select>
                     </div>
                 </div>
 
@@ -85,30 +121,34 @@
                         <select id="dog_experience" name="dog_experience" required>
                             <option value="">Selecciona...</option>
                             <option value="none">Ninguna (primer perro)</option>
-                            <option value="basic">Bá´´sica</option>
+                            <option value="basic">Básica</option>
                             <option value="intermediate">Intermedia</option>
+                            <option value="advanced">Avanzada</option>
+                            <option value="expert">Experto</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label for="first_time_owner">Es tu primer perro:</label>
                         <select id="first_time_owner" name="first_time_owner" required>
                             <option value="">Selecciona...</option>
-                            <option value="true">Sí´´</option>
+                            <option value="true">Sí</option>
                             <option value="false">No</option>
                         </select>
                     </div>
                 </div>
 
                 <div class="form-section">
-                    <h3>🎨 Preferencias Fí´´sicas</h3>
+                    <h3>🎨 Preferencias Físicas</h3>
                     <div class="form-group">
-                        <label for="preferred_size">Tamañ´´´o preferido:</label>
+                        <label for="preferred_size">Tamaño preferido:</label>
                         <select id="preferred_size" name="preferred_size" required>
                             <option value="">Selecciona...</option>
                             <option value="mini">Mini (<5 kg)</option>
-                            <option value="small">Pequeñ´´´o (5-12 kg)</option>
+                            <option value="small">Pequeño (5-12 kg)</option>
                             <option value="medium">Mediano (12-25 kg)</option>
                             <option value="large">Grande (25-45 kg)</option>
+                            <option value="giant">Gigante (>45 kg)</option>
+                            <option value="no_preference">Sin preferencia</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -118,6 +158,17 @@
                             <option value="none">Ninguna</option>
                             <option value="low">Baja</option>
                             <option value="medium">Media</option>
+                            <option value="high">Alta</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="grooming_willingness">Tiempo para grooming:</label>
+                        <select id="grooming_willingness" name="grooming_willingness" required>
+                            <option value="">Selecciona...</option>
+                            <option value="minimal">Mínimo</option>
+                            <option value="moderate">Moderado</option>
+                            <option value="high">Alto</option>
+                            <option value="professional">Profesional</option>
                         </select>
                     </div>
                 </div>
@@ -131,6 +182,17 @@
                             <option value="none">No hay alergias</option>
                             <option value="mild">Leves</option>
                             <option value="moderate">Moderadas</option>
+                            <option value="severe">Severas</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="vet_budget_monthly">Presupuesto veterinario mensual:</label>
+                        <select id="vet_budget_monthly" name="vet_budget_monthly" required>
+                            <option value="">Selecciona...</option>
+                            <option value="low">Bajo (<50€)</option>
+                            <option value="medium">Medio (50-100€)</option>
+                            <option value="high">Alto (100-200€)</option>
+                            <option value="unlimited">Muy alto (200+€)</option>
                         </select>
                     </div>
                 </div>
@@ -138,12 +200,13 @@
                 <div class="form-section">
                     <h3>🐾 Personalidad</h3>
                     <div class="form-group">
-                        <label for="desired_energy">Nivel de energí´´a deseado:</label>
+                        <label for="desired_energy">Nivel de energía deseado:</label>
                         <select id="desired_energy" name="desired_energy" required>
                             <option value="">Selecciona...</option>
-                            <option value="low">Bajo (tranquilo)</option>
+                            <option value="low">Bajo</option>
                             <option value="medium">Medio</option>
-                            <option value="high">Alto (activo)</option>
+                            <option value="high">Alto</option>
+                            <option value="very_high">Muy alto</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -153,6 +216,31 @@
                             <option value="none">Ninguna</option>
                             <option value="low">Baja</option>
                             <option value="medium">Media</option>
+                            <option value="high">Alta</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="kids_compatibility">Importancia que sea bueno con niños:</label>
+                        <select id="kids_compatibility" name="kids_compatibility" required>
+                            <option value="">Selecciona...</option>
+                            <option value="essential">Esencial</option>
+                            <option value="important">Importante</option>
+                            <option value="nice_to_have">Sería bueno</option>
+                            <option value="not_important">No importante</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3>🎯 Objetivos</h3>
+                    <div class="form-group">
+                        <label for="obedience_expectations">Expectativas de obediencia:</label>
+                        <select id="obedience_expectations" name="obedience_expectations" required>
+                            <option value="">Selecciona...</option>
+                            <option value="basic">Básica</option>
+                            <option value="good">Buena</option>
+                            <option value="excellent">Excelente</option>
+                            <option value="competition">Competición</option>
                         </select>
                     </div>
                 </div>
@@ -167,38 +255,51 @@
         </div>
 
         <footer>
-            <p>Dog Breed Selector © 2024 | Hecho con ❤️ para amantes de los perros</p>
-            <p>GitHub: <a href="https://github.com/fmarquezarate-png/dog-breed-selector" style="color: white;">@fmarquezarate-png</a></p>
+            <p>Dog Breed Selector © 2024 | GitHub: <a href="https://github.com/fmarquezarate-png/dog-breed-selector" style="color: white;">@fmarquezarate-png</a></p>
         </footer>
     </div>
 
-    <script>
-        document.getElementById('questionnaireForm').addEventListener('submit', function(e) {
+    <script type="module">
+        import { createCalculator } from './engine.js';
+
+        let calculatorReady = null;
+
+        async function getCalculator() {
+            if (!calculatorReady) {
+                calculatorReady = Promise.all([
+                    fetch('./breeds.json').then(r => r.json()),
+                    fetch('./questions.json').then(r => r.json()),
+                ]).then(([breedsData, questionsData]) => ({
+                    breeds: breedsData.breeds,
+                    calculator: createCalculator(questionsData.categories),
+                }));
+            }
+            return calculatorReady;
+        }
+
+        document.getElementById('questionnaireForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            
+
             const formData = new FormData(e.target);
             const answers = {};
             for (let [key, value] of formData.entries()) {
-                answers[key] = value === 'true' ? true : value === 'false' ? false : !isNaN(value) ? Number(value) : value;
+                answers[key] = value === 'true' ? true : value === 'false' ? false : (value !== '' && !isNaN(value)) ? Number(value) : value;
             }
-            
-            // Resultados de ejemplo
-            const sampleResults = [
-                {rank: 1, breed_name_es: "Cavalier King Charles Spaniel", match_percentage: 87, key_traits: ["Tamañ´´´o pequeñ´´´o", "Baja energí´´a", "Afectuoso", "Gentil"], considerations: ["Ejercicio moderado", "Bueno con niños"]},
-                {rank: 2, breed_name_es: "Boston Terrier", match_percentage: 84, key_traits: ["Tamañ´´´o pequeñ´´´o", "Energí´´a moderada", "Amigable", "Inteligente"], considerations: ["Evitar temperaturas extremas"]},
-                {rank: 3, breed_name_es: "French Bulldog", match_percentage: 81, key_traits: ["Tamañ´´´o pequeñ´´´o", "Baja energí´´a", "Afectuoso", "Tranquilo"], considerations: ["Evitar calor extremo", "Cuidado de pliegues"]}
-            ];
-            
+
+            const { breeds, calculator } = await getCalculator();
+            const results = calculator.scoreAllBreeds(answers, breeds).slice(0, 5);
+
             const resultsContent = document.getElementById('resultsContent');
-            resultsContent.innerHTML = sampleResults.map(rec => `
+            resultsContent.innerHTML = results.map((rec, i) => `
                 <div class="breed-card">
-                    <h3>${rec.rank}. ${rec.breed_name_es}</h3>
+                    <h3>${i + 1}. ${rec.breed_name_es}</h3>
                     <div class="match-score">${rec.match_percentage}% compatible</div>
                     <ul>${rec.key_traits.map(t => `<li>${t}</li>`).join('')}</ul>
-                    <p><strong>Consideraciones:</strong> ${rec.considerations.join(', ')}</p>
+                    ${rec.considerations.length ? `<p><strong>Ten en cuenta:</strong> ${rec.considerations.join(', ')}</p>` : ''}
+                    ${rec.dealbreakers.length ? `<p>⚠️ ${rec.dealbreakers.join(', ')}</p>` : ''}
                 </div>
             `).join('');
-            
+
             document.getElementById('results').style.display = 'block';
             document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
         });

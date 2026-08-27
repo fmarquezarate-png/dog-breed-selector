@@ -74,7 +74,7 @@ La mayoria si, pero algunas son opcionales. El sistema te indicara cuales son re
 
 ### 12. Que tan importante es el tamaño de mi vivienda?
 
-Muy importante. Razas grandes en espacios pequeños pueden desarrollar problemas de comportamiento y salud. El sistema penaliza fuertemente incompatibilidades espacio-tamañ´´´o.
+Muy importante. Razas grandes en espacios pequeños pueden desarrollar problemas de comportamiento y salud. El sistema penaliza fuertemente incompatibilidades espacio-tamaño.
 
 ### 13. Realmente necesito un jardin?
 
@@ -94,7 +94,7 @@ Para muchas razas si. Considera:
 ### 15. Tengo alergias leves, puedo tener perro?
 
 Si, considera:
-- Razas hipoalergenicas (Poodle, Malté´´s, Yorkshire, etc.)
+- Razas hipoalergenicas (Poodle, Maltés, Yorkshire, etc.)
 - Pasar tiempo con la raza antes de decidir
 - Consultar con alergologo
 - Medidas de limpieza adicionales
@@ -104,12 +104,12 @@ Si, considera:
 ### 16. Cuanto cuesta aproximadamente tener un perro?
 
 Costos anuales estimados (Espana):
-- **Veterinario**: 200-600€/añ´´´o (vacunas, revisiones, imprevistos)
-- **Comida**: 300-800€/añ´´´o (depende del tamaño)
-- **Accesorios**: 100-300€/añ´´´o (correa, cama, juguetes)
-- **Grooming**: 0-600€/añ´´´o (depende de la raza)
-- **Seguro**: 200-400€/añ´´´o (opcional)
-- **Total**: 800-2700€/añ´´´o
+- **Veterinario**: 200-600€/año (vacunas, revisiones, imprevistos)
+- **Comida**: 300-800€/año (depende del tamaño)
+- **Accesorios**: 100-300€/año (correa, cama, juguetes)
+- **Grooming**: 0-600€/año (depende de la raza)
+- **Seguro**: 200-400€/año (opcional)
+- **Total**: 800-2700€/año
 
 ### 17. Que razas son mas economicas de mantener?
 
@@ -122,8 +122,8 @@ Razas pequenas/medianas, pelo corto, sin problemas de salud:
 ### 18. Que razas son mas caras?
 
 Razas grandes, pelo largo, con problemas de salud:
-- Gran Dané´´s (comida, veterinario)
-- Pastor Alemá´´n (problemas de cadera)
+- Gran Danés (comida, veterinario)
+- Pastor Alemán (problemas de cadera)
 - Bulldog Frances (problemas respiratorios)
 - Razas con grooming profesional necesario
 
@@ -135,7 +135,7 @@ Razas ideales para primerizos:
 - Labrador Retriever
 - Golden Retriever
 - Cavalier King Charles Spaniel
-- Malté´´s
+- Maltés
 - Boston Terrier
 - Beagle
 
@@ -168,7 +168,7 @@ Minimos recomendados:
 
 Razas que producen menos caspa y pelo, reduciendo reacciones alergicas:
 - Poodle (todas las tallas)
-- Malté´´s
+- Maltés
 - Yorkshire Terrier
 - Shih Tzu
 - Schnauzer
@@ -180,19 +180,19 @@ Razas que producen menos caspa y pelo, reduciendo reacciones alergicas:
 ### 23. Cuanto viven los perros?
 
 Depende del tamaño:
-- **Mini/Pequeñ´´´as**: 12-16 añ ´os (a veces mas)
-- **Medianas**: 10-14 añ ´os
-- **Grandes**: 8-12 añ ´os
-- **Gigantes**: 6-10 añ ´os
+- **Mini/Pequeñas**: 12-16 años (a veces mas)
+- **Medianas**: 10-14 años
+- **Grandes**: 8-12 años
+- **Gigantes**: 6-10 años
 
 ### 24. Que problemas de salud son comunes?
 
 Por raza:
 - **Labrador**: Displasia de cadera, obesidad
-- **Pastor Alemá´´n**: Displasia, problemas digestivos
+- **Pastor Alemán**: Displasia, problemas digestivos
 - **Bulldog Frances**: Problemas respiratorios, sobrecalentamiento
 - **Cavalier**: Problemas cardíacos
-- **Gran Dané´´s**: Torsion gastrica, problemas cardiacos
+- **Gran Danés**: Torsion gastrica, problemas cardiacos
 
 ## 🔧 Uso Tecnico
 

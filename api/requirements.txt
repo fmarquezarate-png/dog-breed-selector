@@ -1,0 +1,6 @@
+# Dependencias del serverless function que despliega Vercel.
+# Vercel usa el requirements.txt más cercano al fichero de entrada
+# (api/main.py), así que va separado del de la raíz (solo dev/tests).
+
+fastapi==0.104.1
+pydantic==2.5.0
