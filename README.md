@@ -56,9 +56,19 @@ for rec in recommender.recommend({"preferred_size": "small", "desired_energy": "
 `python3 -m http.server` desde `web/`. Lee `breeds.json` y `questions.json`
 (regenerables con `python3 -c "from breeds import *; ..."`, ver
 `src/breeds.py:breeds_to_json`) y puntúa en el navegador con `engine.js`,
-un espejo simplificado de `src/calculator.py`. Si cambias una fórmula de
-scoring, cámbiala en los dos sitios. Es intencionalmente independiente de
-la API: funciona sin backend.
+un espejo de `src/calculator.py` (misma fórmula, incluido el multiplicador
+de alineación). Si cambias una fórmula de scoring, cámbiala en los dos
+sitios — no hay build step ni tipo que te avise si se desincronizan. Es
+intencionalmente independiente de la API: funciona sin backend.
+
+El cuestionario se renderiza dinámicamente desde `questions.json` como un
+wizard de un paso por categoría (barra de progreso, texto de ayuda bajo
+cada pregunta explicando qué implica la respuesta) — no hay campos
+hardcodeados en el HTML, así que una pregunta nueva en `questions.json`
+aparece sola en la web sin tocar `index.html`. Los resultados muestran un
+"hero card" para la raza #1 y filas compactas para el resto, pensados para
+caber en una sola captura de pantalla; el botón "Compartir resultado" usa
+`navigator.share` en móvil o copia un resumen al portapapeles.
 
 ### API
 

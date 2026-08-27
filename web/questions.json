@@ -10,21 +10,41 @@
         {
           "id": "housing_type",
           "label": "Tipo de vivienda",
+          "help": "Influye en cuánto espacio real tiene el perro y si necesita ser una raza cómoda en interiores.",
           "type": "single_choice",
           "required": true,
           "default": "casa_mediana",
           "options": [
-            { "value": "casa_grande", "label": "Casa grande (>200 m²)" },
-            { "value": "casa_mediana", "label": "Casa mediana (100-200 m²)" },
-            { "value": "casa_pequena", "label": "Casa pequeña (<100 m²)" },
-            { "value": "apartamento_grande", "label": "Apartamento grande (>120 m²)" },
-            { "value": "apartamento_mediano", "label": "Apartamento mediano (70-120 m²)" },
-            { "value": "apartamento_pequeno", "label": "Apartamento pequeño (<70 m²)" }
+            {
+              "value": "casa_grande",
+              "label": "Casa grande (>200 m²)"
+            },
+            {
+              "value": "casa_mediana",
+              "label": "Casa mediana (100-200 m²)"
+            },
+            {
+              "value": "casa_pequena",
+              "label": "Casa pequeña (<100 m²)"
+            },
+            {
+              "value": "apartamento_grande",
+              "label": "Apartamento grande (>120 m²)"
+            },
+            {
+              "value": "apartamento_mediano",
+              "label": "Apartamento mediano (70-120 m²)"
+            },
+            {
+              "value": "apartamento_pequeno",
+              "label": "Apartamento pequeño (<70 m²)"
+            }
           ]
         },
         {
           "id": "housing_size_sqm",
           "label": "Metros cuadrados",
+          "help": "A más metros, se abren más razas grandes; con poco espacio el sistema prioriza razas compactas y tranquilas en casa.",
           "type": "number",
           "required": true,
           "min": 20,
@@ -34,39 +54,62 @@
         {
           "id": "has_garden",
           "label": "Espacios exteriores",
+          "help": "Un jardín compensa parte del ejercicio diario, pero no lo reemplaza: un perro enérgico igual necesita salir a caminar.",
           "type": "single_choice",
           "required": true,
           "default": "no",
           "options": [
-            { "value": "yes_large", "label": "Sí, jardín grande (>50 m²)" },
-            { "value": "yes_medium", "label": "Sí, jardín mediano (20-50 m²)" },
-            { "value": "yes_small", "label": "Sí, jardín pequeño (<20 m²)" },
-            { "value": "terrace", "label": "Terraza o balcón" },
-            { "value": "no", "label": "No tengo espacios exteriores" }
+            {
+              "value": "yes_large",
+              "label": "Sí, jardín grande (>50 m²)"
+            },
+            {
+              "value": "yes_medium",
+              "label": "Sí, jardín mediano (20-50 m²)"
+            },
+            {
+              "value": "yes_small",
+              "label": "Sí, jardín pequeño (<20 m²)"
+            },
+            {
+              "value": "terrace",
+              "label": "Terraza o balcón"
+            },
+            {
+              "value": "no",
+              "label": "No tengo espacios exteriores"
+            }
           ]
         },
         {
           "id": "geographic_location",
           "label": "Clima de tu zona",
+          "help": "Algunas razas de doble capa sufren el calor extremo, y las de pelo corto sufren el frío. Esto filtra por tolerancia térmica.",
           "type": "single_choice",
           "required": true,
           "default": "continental",
           "options": [
-            { "value": "frio", "label": "Frío (inviernos duros)" },
-            { "value": "continental", "label": "Continental (inviernos y veranos marcados)" },
-            { "value": "atlantico", "label": "Atlántico (templado y húmedo)" },
-            { "value": "mediterraneo", "label": "Mediterráneo (veranos calurosos)" },
-            { "value": "calido", "label": "Muy caluroso (verano largo y extremo)" }
+            {
+              "value": "frio",
+              "label": "Frío (inviernos duros)"
+            },
+            {
+              "value": "continental",
+              "label": "Continental (inviernos y veranos marcados)"
+            },
+            {
+              "value": "atlantico",
+              "label": "Atlántico (templado y húmedo)"
+            },
+            {
+              "value": "mediterraneo",
+              "label": "Mediterráneo (veranos calurosos)"
+            },
+            {
+              "value": "calido",
+              "label": "Muy caluroso (verano largo y extremo)"
+            }
           ]
-        },
-        {
-          "id": "household_size",
-          "label": "Personas en el hogar",
-          "type": "number",
-          "required": true,
-          "min": 1,
-          "max": 12,
-          "default": 2
         },
         {
           "id": "has_children",
@@ -75,11 +118,26 @@
           "required": true,
           "default": "no",
           "options": [
-            { "value": "no", "label": "No hay niños" },
-            { "value": "yes_0_3", "label": "Sí, bebés (0-3 años)" },
-            { "value": "yes_4_8", "label": "Sí, niños pequeños (4-8 años)" },
-            { "value": "yes_9_14", "label": "Sí, niños (9-14 años)" },
-            { "value": "yes_15_plus", "label": "Sí, adolescentes (15+ años)" }
+            {
+              "value": "no",
+              "label": "No hay niños"
+            },
+            {
+              "value": "yes_0_3",
+              "label": "Sí, bebés (0-3 años)"
+            },
+            {
+              "value": "yes_4_8",
+              "label": "Sí, niños pequeños (4-8 años)"
+            },
+            {
+              "value": "yes_9_14",
+              "label": "Sí, niños (9-14 años)"
+            },
+            {
+              "value": "yes_15_plus",
+              "label": "Sí, adolescentes (15+ años)"
+            }
           ]
         }
       ]
@@ -91,20 +149,37 @@
         {
           "id": "activity_level",
           "label": "Tu nivel de actividad física",
+          "help": "Tu energía personal, no la del perro — se combina con cuánto ejercicio le puedes dar para no recomendarte una raza que te va a exigir más de lo que puedes sostener.",
           "type": "single_choice",
           "required": true,
           "default": "moderate",
           "options": [
-            { "value": "sedentary", "label": "Sedentario" },
-            { "value": "light", "label": "Ligero" },
-            { "value": "moderate", "label": "Moderado" },
-            { "value": "active", "label": "Activo" },
-            { "value": "very_active", "label": "Muy activo" }
+            {
+              "value": "sedentary",
+              "label": "Sedentario"
+            },
+            {
+              "value": "light",
+              "label": "Ligero"
+            },
+            {
+              "value": "moderate",
+              "label": "Moderado"
+            },
+            {
+              "value": "active",
+              "label": "Activo"
+            },
+            {
+              "value": "very_active",
+              "label": "Muy activo"
+            }
           ]
         },
         {
           "id": "daily_exercise_time_minutes",
           "label": "Minutos al día que puedes dedicar a pasear y ejercitar al perro",
+          "help": "Es el filtro más determinante de estilo de vida: por debajo del mínimo que necesita una raza activa, esa raza queda prácticamente descartada aunque te guste.",
           "type": "number",
           "required": true,
           "min": 10,
@@ -114,15 +189,31 @@
         {
           "id": "work_schedule",
           "label": "Horario laboral",
+          "help": "Cuantas más horas pase solo, peor le va a una raza ansiosa o ladradora — puede sumar puntos en contra aunque el resto encaje.",
           "type": "single_choice",
           "required": true,
           "default": "office_8h",
           "options": [
-            { "value": "home_full", "label": "Trabajo desde casa" },
-            { "value": "home_partial", "label": "Híbrido" },
-            { "value": "office_8h", "label": "Oficina 8 h" },
-            { "value": "office_10h_plus", "label": "Oficina 10 h o más" },
-            { "value": "frequent_travel", "label": "Viajo con frecuencia" }
+            {
+              "value": "home_full",
+              "label": "Trabajo desde casa"
+            },
+            {
+              "value": "home_partial",
+              "label": "Híbrido"
+            },
+            {
+              "value": "office_8h",
+              "label": "Oficina 8 h"
+            },
+            {
+              "value": "office_10h_plus",
+              "label": "Oficina 10 h o más"
+            },
+            {
+              "value": "frequent_travel",
+              "label": "Viajo con frecuencia"
+            }
           ]
         }
       ]
@@ -134,20 +225,37 @@
         {
           "id": "dog_experience",
           "label": "Experiencia previa con perros",
+          "help": "Las razas testarudas o de manejo exigente puntúan peor si declaras poca experiencia; con experiencia avanzada, ninguna raza se descarta por 'difícil'.",
           "type": "single_choice",
           "required": true,
           "default": "basic",
           "options": [
-            { "value": "none", "label": "Ninguna (será mi primer perro)" },
-            { "value": "basic", "label": "Básica" },
-            { "value": "intermediate", "label": "Intermedia" },
-            { "value": "advanced", "label": "Avanzada" },
-            { "value": "expert", "label": "Experta" }
+            {
+              "value": "none",
+              "label": "Ninguna (será mi primer perro)"
+            },
+            {
+              "value": "basic",
+              "label": "Básica"
+            },
+            {
+              "value": "intermediate",
+              "label": "Intermedia"
+            },
+            {
+              "value": "advanced",
+              "label": "Avanzada"
+            },
+            {
+              "value": "expert",
+              "label": "Experta"
+            }
           ]
         },
         {
           "id": "first_time_owner",
           "label": "¿Es tu primer perro?",
+          "help": "Si es tu primer perro, el sistema evita razas conocidas por ser difíciles de entrenar o de manejar para principiantes.",
           "type": "boolean",
           "required": true,
           "default": true
@@ -161,29 +269,61 @@
         {
           "id": "preferred_size",
           "label": "Tamaño preferido",
+          "help": "Es una de las señales más fuertes del cuestionario: pedir un tamaño concreto reordena el ranking mucho más que casi cualquier otra respuesta.",
           "type": "single_choice",
           "required": true,
           "default": "no_preference",
           "options": [
-            { "value": "mini", "label": "Mini (menos de 5 kg)" },
-            { "value": "small", "label": "Pequeño (5-12 kg)" },
-            { "value": "medium", "label": "Mediano (12-25 kg)" },
-            { "value": "large", "label": "Grande (25-45 kg)" },
-            { "value": "giant", "label": "Gigante (más de 45 kg)" },
-            { "value": "no_preference", "label": "Sin preferencia" }
+            {
+              "value": "mini",
+              "label": "Mini (menos de 5 kg)"
+            },
+            {
+              "value": "small",
+              "label": "Pequeño (5-12 kg)"
+            },
+            {
+              "value": "medium",
+              "label": "Mediano (12-25 kg)"
+            },
+            {
+              "value": "large",
+              "label": "Grande (25-45 kg)"
+            },
+            {
+              "value": "giant",
+              "label": "Gigante (más de 45 kg)"
+            },
+            {
+              "value": "no_preference",
+              "label": "Sin preferencia"
+            }
           ]
         },
         {
           "id": "shedding_tolerance",
           "label": "Tolerancia a la muda de pelo",
+          "help": "'Ninguna' te acerca a razas hipoalergénicas o de pelo mínimo; 'Alta' abre razas de doble capa que sueltan mucho pelo estacionalmente.",
           "type": "single_choice",
           "required": true,
           "default": "medium",
           "options": [
-            { "value": "none", "label": "Ninguna" },
-            { "value": "low", "label": "Baja" },
-            { "value": "medium", "label": "Media" },
-            { "value": "high", "label": "Alta" }
+            {
+              "value": "none",
+              "label": "Ninguna"
+            },
+            {
+              "value": "low",
+              "label": "Baja"
+            },
+            {
+              "value": "medium",
+              "label": "Media"
+            },
+            {
+              "value": "high",
+              "label": "Alta"
+            }
           ]
         }
       ]
@@ -195,27 +335,53 @@
         {
           "id": "household_allergies",
           "label": "Alergias a perros en el hogar",
+          "help": "Con alergias moderadas o severas, una raza no hipoalergénica queda casi descartada (penalización fuerte), no solo un poco peor puntuada.",
           "type": "single_choice",
           "required": true,
           "default": "none",
           "options": [
-            { "value": "none", "label": "No hay alergias" },
-            { "value": "mild", "label": "Leves" },
-            { "value": "moderate", "label": "Moderadas" },
-            { "value": "severe", "label": "Severas" }
+            {
+              "value": "none",
+              "label": "No hay alergias"
+            },
+            {
+              "value": "mild",
+              "label": "Leves"
+            },
+            {
+              "value": "moderate",
+              "label": "Moderadas"
+            },
+            {
+              "value": "severe",
+              "label": "Severas"
+            }
           ]
         },
         {
           "id": "vet_budget_monthly",
           "label": "Presupuesto veterinario mensual",
+          "help": "Las razas con más problemas de salud hereditarios (braquicéfalos, razas gigantes) puntúan peor si el presupuesto declarado es bajo.",
           "type": "single_choice",
           "required": true,
           "default": "medium",
           "options": [
-            { "value": "low", "label": "Bajo (menos de 50 €)" },
-            { "value": "medium", "label": "Medio (50-100 €)" },
-            { "value": "high", "label": "Alto (100-200 €)" },
-            { "value": "unlimited", "label": "Muy alto (más de 200 €)" }
+            {
+              "value": "low",
+              "label": "Bajo (menos de 50 €)"
+            },
+            {
+              "value": "medium",
+              "label": "Medio (50-100 €)"
+            },
+            {
+              "value": "high",
+              "label": "Alto (100-200 €)"
+            },
+            {
+              "value": "unlimited",
+              "label": "Muy alto (más de 200 €)"
+            }
           ]
         }
       ]
@@ -227,53 +393,105 @@
         {
           "id": "desired_energy",
           "label": "Nivel de energía que buscas",
+          "help": "Junto con los minutos de ejercicio, es la señal que más mueve el ranking: pedir energía alta favorece razas de trabajo/deporte y penaliza a las tranquilas, y viceversa.",
           "type": "single_choice",
           "required": true,
           "default": "medium",
           "options": [
-            { "value": "low", "label": "Bajo, un perro tranquilo" },
-            { "value": "medium", "label": "Medio" },
-            { "value": "high", "label": "Alto" },
-            { "value": "very_high", "label": "Muy alto, un compañero deportivo" }
+            {
+              "value": "low",
+              "label": "Bajo, un perro tranquilo"
+            },
+            {
+              "value": "medium",
+              "label": "Medio"
+            },
+            {
+              "value": "high",
+              "label": "Alto"
+            },
+            {
+              "value": "very_high",
+              "label": "Muy alto, un compañero deportivo"
+            }
           ]
         },
         {
           "id": "barking_tolerance",
           "label": "Tolerancia al ladrido",
+          "help": "Baja tolerancia penaliza con fuerza a razas guardianas o de alerta (Chihuahua, Beagle, Pastor Alemán), que ladran mucho por naturaleza.",
           "type": "single_choice",
           "required": true,
           "default": "medium",
           "options": [
-            { "value": "none", "label": "Ninguna" },
-            { "value": "low", "label": "Baja" },
-            { "value": "medium", "label": "Media" },
-            { "value": "high", "label": "Alta" }
+            {
+              "value": "none",
+              "label": "Ninguna"
+            },
+            {
+              "value": "low",
+              "label": "Baja"
+            },
+            {
+              "value": "medium",
+              "label": "Media"
+            },
+            {
+              "value": "high",
+              "label": "Alta"
+            }
           ]
         },
         {
           "id": "kids_compatibility",
           "label": "Importancia de que sea bueno con niños",
+          "help": "Si marcas 'esencial', las razas con poca paciencia histórica con niños quedan prácticamente fuera del top.",
           "type": "single_choice",
           "required": true,
           "default": "not_important",
           "options": [
-            { "value": "essential", "label": "Esencial" },
-            { "value": "important", "label": "Importante" },
-            { "value": "nice_to_have", "label": "Sería bueno" },
-            { "value": "not_important", "label": "No importante" }
+            {
+              "value": "essential",
+              "label": "Esencial"
+            },
+            {
+              "value": "important",
+              "label": "Importante"
+            },
+            {
+              "value": "nice_to_have",
+              "label": "Sería bueno"
+            },
+            {
+              "value": "not_important",
+              "label": "No importante"
+            }
           ]
         },
         {
           "id": "other_pets",
           "label": "¿Convivirá con otras mascotas?",
+          "help": "Si convivirá con gatos, las razas con instinto de presa alto (galgos, terriers de caza, husky) pierden puntos aunque encajen en todo lo demás.",
           "type": "single_choice",
           "required": true,
           "default": "none",
           "options": [
-            { "value": "none", "label": "No, será el único animal" },
-            { "value": "dogs", "label": "Sí, otro u otros perros" },
-            { "value": "cats", "label": "Sí, gatos" },
-            { "value": "both", "label": "Sí, perros y gatos" }
+            {
+              "value": "none",
+              "label": "No, será el único animal"
+            },
+            {
+              "value": "dogs",
+              "label": "Sí, otro u otros perros"
+            },
+            {
+              "value": "cats",
+              "label": "Sí, gatos"
+            },
+            {
+              "value": "both",
+              "label": "Sí, perros y gatos"
+            }
           ]
         }
       ]
@@ -285,27 +503,53 @@
         {
           "id": "grooming_willingness",
           "label": "Tiempo que puedes dedicar al cepillado y la peluquería",
+          "help": "'Mínimo' penaliza razas de pelo largo o rizado que necesitan peluquería profesional regular (Poodle, Shih Tzu, Yorkshire).",
           "type": "single_choice",
           "required": true,
           "default": "moderate",
           "options": [
-            { "value": "minimal", "label": "Mínimo (cepillado ocasional)" },
-            { "value": "moderate", "label": "Moderado (semanal)" },
-            { "value": "high", "label": "Alto (varias veces por semana)" },
-            { "value": "professional", "label": "Peluquería profesional periódica" }
+            {
+              "value": "minimal",
+              "label": "Mínimo (cepillado ocasional)"
+            },
+            {
+              "value": "moderate",
+              "label": "Moderado (semanal)"
+            },
+            {
+              "value": "high",
+              "label": "Alto (varias veces por semana)"
+            },
+            {
+              "value": "professional",
+              "label": "Peluquería profesional periódica"
+            }
           ]
         },
         {
           "id": "drooling_tolerance",
           "label": "Tolerancia al babeo",
+          "help": "Molosoides y razas de belfos caídos (Mastín, Gran Danés, San Bernardo) babean mucho; baja tolerancia los penaliza.",
           "type": "single_choice",
           "required": true,
           "default": "medium",
           "options": [
-            { "value": "none", "label": "Ninguna" },
-            { "value": "low", "label": "Baja" },
-            { "value": "medium", "label": "Media" },
-            { "value": "high", "label": "Alta" }
+            {
+              "value": "none",
+              "label": "Ninguna"
+            },
+            {
+              "value": "low",
+              "label": "Baja"
+            },
+            {
+              "value": "medium",
+              "label": "Media"
+            },
+            {
+              "value": "high",
+              "label": "Alta"
+            }
           ]
         }
       ]
@@ -317,28 +561,57 @@
         {
           "id": "obedience_expectations",
           "label": "Expectativas de obediencia",
+          "help": "Pedir nivel competición favorece razas muy entrenables (Border Collie, Pastor Alemán, Caniche) y penaliza a las más independientes.",
           "type": "single_choice",
           "required": true,
           "default": "good",
           "options": [
-            { "value": "basic", "label": "Básica" },
-            { "value": "good", "label": "Buena" },
-            { "value": "excellent", "label": "Excelente" },
-            { "value": "competition", "label": "Nivel competición" }
+            {
+              "value": "basic",
+              "label": "Básica"
+            },
+            {
+              "value": "good",
+              "label": "Buena"
+            },
+            {
+              "value": "excellent",
+              "label": "Excelente"
+            },
+            {
+              "value": "competition",
+              "label": "Nivel competición"
+            }
           ]
         },
         {
           "id": "main_purpose",
           "label": "Para qué quieres al perro principalmente",
+          "help": "Ajusta qué rasgos pesan más: 'deporte' prioriza energía y entrenabilidad, 'guarda' prioriza protectividad, 'compañía' prioriza calma y cariño.",
           "type": "single_choice",
           "required": true,
           "default": "companion",
           "options": [
-            { "value": "companion", "label": "Compañía" },
-            { "value": "family", "label": "Perro de familia" },
-            { "value": "sport", "label": "Deporte y actividad al aire libre" },
-            { "value": "guard", "label": "Vigilancia o guarda" },
-            { "value": "therapy", "label": "Apoyo emocional o terapia" }
+            {
+              "value": "companion",
+              "label": "Compañía"
+            },
+            {
+              "value": "family",
+              "label": "Perro de familia"
+            },
+            {
+              "value": "sport",
+              "label": "Deporte y actividad al aire libre"
+            },
+            {
+              "value": "guard",
+              "label": "Vigilancia o guarda"
+            },
+            {
+              "value": "therapy",
+              "label": "Apoyo emocional o terapia"
+            }
           ]
         }
       ]
