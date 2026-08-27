@@ -294,7 +294,8 @@ Este proyecto esta bajo la Licencia MIT. Ver el archivo [LICENSE](LICENSE) para 
 
 **Francisco Marquez Arate**
 - GitHub: [@fmarquezarate-png](https://github.com/fmarquezarate-png)
-- Ubicacion: Valencia, Espana
+- Ubicacion: Barcelona, Espana
+- fmarquezarate@gmail.com
 
 ## 🙏 Agradecimientos
 
@@ -321,5 +322,5 @@ Este proyecto esta bajo la Licencia MIT. Ver el archivo [LICENSE](LICENSE) para 
 
 **!Encuentra tu companero ideal hoy mismo! 🐕**
 
-*Ultima actualizacion: Agosto 2024*
+*Ultima actualizacion: Agosto 2026*
 *Version: 1.0.0*
